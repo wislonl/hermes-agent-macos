@@ -51,7 +51,7 @@
           ]
         },
         "result": {
-          "type": "object"
+          "$ref": "#/$defs/jsonRpcResult"
         },
         "error": {
           "$ref": "#/$defs/jsonRpcError"
@@ -69,6 +69,90 @@
           ]
         }
       ],
+      "additionalProperties": false
+    },
+    "jsonRpcResult": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/runtimeHandshakeResult"
+        },
+        {
+          "$ref": "#/$defs/runCreateResult"
+        },
+        {
+          "$ref": "#/$defs/approvalResolveResult"
+        }
+      ]
+    },
+    "runtimeHandshakeResult": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "runtime",
+        "capabilities"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "string"
+        },
+        "runtime": {
+          "$ref": "#/$defs/runtimeInfo"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeInfo": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runCreateResult": {
+      "type": "object",
+      "required": [
+        "runId",
+        "status"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "status": {
+          "const": "running"
+        }
+      },
+      "additionalProperties": false
+    },
+    "approvalResolveResult": {
+      "type": "object",
+      "required": [
+        "approvalId",
+        "status"
+      ],
+      "properties": {
+        "approvalId": {
+          "type": "string"
+        },
+        "status": {
+          "const": "resolved"
+        }
+      },
       "additionalProperties": false
     },
     "jsonRpcError": {
