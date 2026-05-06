@@ -57,6 +57,12 @@ docs/                       project documentation
 
 The implementation has not been scaffolded yet. Build and test commands will be added with the first app/runtime commits.
 
+Run all available local checks:
+
+```bash
+./scripts/check.sh
+```
+
 ## License
 
-Hermes Agent should use a permissive open-source license. The recommended license is Apache-2.0 because it is common for infrastructure-oriented developer tools and includes an explicit patent grant.
+Hermes Agent is licensed under the Apache License 2.0. See `LICENSE`.

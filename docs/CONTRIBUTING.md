@@ -10,6 +10,12 @@ No buildable app or runtime exists in this repository yet. The first scaffolding
 - Rust toolchain and runtime tests.
 - Protocol schema validation.
 
+Run all available local checks:
+
+```bash
+./scripts/check.sh
+```
+
 ## Pull Request Expectations
 
 - Keep changes focused.
