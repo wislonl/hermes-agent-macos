@@ -2,11 +2,13 @@
 
 ## Overview
 
-Hermes Protocol defines communication between the macOS app and the local runtime. The transport for the first version is JSON-RPC over stdio.
+Hermes Protocol defines communication between the macOS app and the local runtime. The first transport uses stdio with JSON-RPC 2.0 envelopes for requests and responses, plus Hermes event objects for runtime events.
 
 ## Transport
 
-The first runtime transport is newline-delimited JSON-RPC 2.0 over stdio. Every request, response, and runtime event is encoded as one JSON object followed by a newline.
+The first runtime transport uses newline-delimited JSON over stdio. App-to-runtime requests and runtime-to-app responses are JSON-RPC 2.0 envelopes with `jsonrpc`, `id`, `method`, and `params` for requests, and `jsonrpc`, `id`, plus `result` or `error` for responses.
+
+Runtime events are newline-delimited Hermes event objects, not JSON-RPC envelopes. Events always include `event` and `runId`, then event-specific fields.
 
 ## Principles
 
@@ -22,7 +24,7 @@ The first runtime transport is newline-delimited JSON-RPC 2.0 over stdio. Every 
 
 The app calls this after starting the runtime.
 
-Request:
+Request params:
 
 ```json
 {
@@ -34,7 +36,7 @@ Request:
 }
 ```
 
-Response:
+Response result:
 
 ```json
 {
@@ -51,7 +53,7 @@ Response:
 
 Starts an agent run.
 
-Request:
+Request params:
 
 ```json
 {
@@ -67,7 +69,7 @@ Request:
 }
 ```
 
-Response:
+Response result:
 
 ```json
 {
@@ -80,7 +82,7 @@ Response:
 
 Resolves a pending approval request.
 
-Request:
+Request params:
 
 ```json
 {
@@ -89,7 +91,9 @@ Request:
 }
 ```
 
-Response:
+`decision` is either `approved` or `denied`.
+
+Response result:
 
 ```json
 {
@@ -158,5 +162,19 @@ Response:
   "event": "run.completed",
   "runId": "run_123",
   "status": "completed"
+}
+```
+
+### `run.failed`
+
+```json
+{
+  "event": "run.failed",
+  "runId": "run_123",
+  "status": "failed",
+  "error": {
+    "code": 5000,
+    "message": "Provider request failed"
+  }
 }
 ```

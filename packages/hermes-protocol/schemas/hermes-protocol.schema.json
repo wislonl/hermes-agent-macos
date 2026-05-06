@@ -16,36 +16,23 @@
   ],
   "$defs": {
     "jsonRpcRequest": {
-      "type": "object",
       "required": [
         "jsonrpc",
         "id",
         "method",
         "params"
       ],
-      "properties": {
-        "jsonrpc": {
-          "const": "2.0"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/runtimeHandshakeRequest"
         },
-        "id": {
-          "type": [
-            "string",
-            "integer"
-          ]
+        {
+          "$ref": "#/$defs/runCreateRequest"
         },
-        "method": {
-          "enum": [
-            "runtime.handshake",
-            "run.create",
-            "run.cancel",
-            "approval.resolve"
-          ]
-        },
-        "params": {
-          "type": "object"
+        {
+          "$ref": "#/$defs/approvalResolveRequest"
         }
-      },
-      "additionalProperties": false
+      ]
     },
     "jsonRpcResponse": {
       "type": "object",
@@ -104,6 +91,218 @@
       "additionalProperties": false
     },
     "runtimeEvent": {
+      "required": [
+        "event",
+        "runId"
+      ],
+      "oneOf": [
+        {
+          "$ref": "#/$defs/messageDeltaEvent"
+        },
+        {
+          "$ref": "#/$defs/toolRequestedEvent"
+        },
+        {
+          "$ref": "#/$defs/approvalRequiredEvent"
+        },
+        {
+          "$ref": "#/$defs/toolResultEvent"
+        },
+        {
+          "$ref": "#/$defs/runCompletedEvent"
+        },
+        {
+          "$ref": "#/$defs/runFailedEvent"
+        }
+      ]
+    },
+    "jsonRpcRequestBase": {
+      "type": "object",
+      "required": [
+        "jsonrpc",
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "method": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      }
+    },
+    "runtimeHandshakeRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/jsonRpcRequestBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "runtime.handshake"
+            },
+            "params": {
+              "$ref": "#/$defs/runtimeHandshakeParams"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "runCreateRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/jsonRpcRequestBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "run.create"
+            },
+            "params": {
+              "$ref": "#/$defs/runCreateParams"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "approvalResolveRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/jsonRpcRequestBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "approval.resolve"
+            },
+            "params": {
+              "$ref": "#/$defs/approvalResolveParams"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "runtimeHandshakeParams": {
+      "type": "object",
+      "required": [
+        "protocolVersion",
+        "client"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "string"
+        },
+        "client": {
+          "$ref": "#/$defs/clientInfo"
+        }
+      },
+      "additionalProperties": false
+    },
+    "clientInfo": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runCreateParams": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "agentProfileId",
+        "input",
+        "workspace"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "agentProfileId": {
+          "type": "string"
+        },
+        "input": {
+          "$ref": "#/$defs/runInput"
+        },
+        "workspace": {
+          "$ref": "#/$defs/workspace"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runInput": {
+      "type": "object",
+      "required": [
+        "type",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "workspace": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "approvalResolveParams": {
+      "type": "object",
+      "required": [
+        "approvalId",
+        "decision"
+      ],
+      "properties": {
+        "approvalId": {
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approved",
+            "denied"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeEventBase": {
       "type": "object",
       "required": [
         "event",
@@ -111,47 +310,187 @@
       ],
       "properties": {
         "event": {
-          "enum": [
-            "message.delta",
-            "tool.requested",
-            "approval.required",
-            "tool.result",
-            "run.completed",
-            "run.failed"
-          ]
+          "type": "string"
         },
         "runId": {
           "type": "string"
-        },
-        "messageId": {
-          "type": "string"
-        },
-        "toolCallId": {
-          "type": "string"
-        },
-        "approvalId": {
-          "type": "string"
-        },
-        "delta": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "operation": {
-          "$ref": "#/$defs/toolOperation"
-        },
-        "outputPreview": {
-          "type": "string"
-        },
-        "error": {
-          "$ref": "#/$defs/jsonRpcError"
         }
-      },
-      "additionalProperties": false
+      }
+    },
+    "messageDeltaEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "delta"
+          ],
+          "properties": {
+            "event": {
+              "const": "message.delta"
+            },
+            "messageId": {
+              "type": "string"
+            },
+            "delta": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "toolRequestedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "toolCallId",
+            "tool",
+            "summary"
+          ],
+          "properties": {
+            "event": {
+              "const": "tool.requested"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "tool": {
+              "$ref": "#/$defs/toolName"
+            },
+            "summary": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "approvalRequiredEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "approvalId",
+            "toolCallId",
+            "operation"
+          ],
+          "properties": {
+            "event": {
+              "const": "approval.required"
+            },
+            "approvalId": {
+              "type": "string"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "operation": {
+              "$ref": "#/$defs/toolOperation"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "toolResultEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "toolCallId",
+            "status"
+          ],
+          "properties": {
+            "event": {
+              "const": "tool.result"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "completed",
+                "failed"
+              ]
+            },
+            "outputPreview": {
+              "type": "string"
+            },
+            "error": {
+              "$ref": "#/$defs/jsonRpcError"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "runCompletedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "event": {
+              "const": "run.completed"
+            },
+            "status": {
+              "const": "completed"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "runFailedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "status",
+            "error"
+          ],
+          "properties": {
+            "event": {
+              "const": "run.failed"
+            },
+            "status": {
+              "const": "failed"
+            },
+            "error": {
+              "$ref": "#/$defs/jsonRpcError"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "toolName": {
+      "enum": [
+        "shell",
+        "file.read",
+        "file.write"
+      ]
     },
     "toolOperation": {
       "type": "object",
@@ -161,11 +500,7 @@
       ],
       "properties": {
         "tool": {
-          "enum": [
-            "shell",
-            "file.read",
-            "file.write"
-          ]
+          "$ref": "#/$defs/toolName"
         },
         "command": {
           "type": "string"
