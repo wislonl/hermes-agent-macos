@@ -4,6 +4,10 @@
 
 Hermes Protocol defines communication between the macOS app and the local runtime. The transport for the first version is JSON-RPC over stdio.
 
+## Transport
+
+The first runtime transport is newline-delimited JSON-RPC 2.0 over stdio. Every request, response, and runtime event is encoded as one JSON object followed by a newline.
+
 ## Principles
 
 - The app controls user approval.
@@ -156,4 +160,3 @@ Response:
   "status": "completed"
 }
 ```
-

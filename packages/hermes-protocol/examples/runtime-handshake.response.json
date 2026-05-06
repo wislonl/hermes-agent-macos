@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": "req_1",
+  "result": {
+    "protocolVersion": "0.1.0",
+    "runtime": {
+      "name": "hermes-runtime",
+      "version": "0.1.0"
+    },
+    "capabilities": [
+      "runs",
+      "tools",
+      "approvals"
+    ]
+  }
+}

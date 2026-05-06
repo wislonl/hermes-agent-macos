@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": "req_2",
+  "method": "run.create",
+  "params": {
+    "sessionId": "session_123",
+    "agentProfileId": "agent_hermes",
+    "input": {
+      "type": "text",
+      "text": "Summarize this repository."
+    },
+    "workspace": {
+      "path": "/Users/example/project"
+    }
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes-agent.dev/schemas/hermes-protocol.schema.json",
+  "title": "Hermes Protocol",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/jsonRpcRequest"
+    },
+    {
+      "$ref": "#/$defs/jsonRpcResponse"
+    },
+    {
+      "$ref": "#/$defs/runtimeEvent"
+    }
+  ],
+  "$defs": {
+    "jsonRpcRequest": {
+      "type": "object",
+      "required": [
+        "jsonrpc",
+        "id",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "method": {
+          "enum": [
+            "runtime.handshake",
+            "run.create",
+            "run.cancel",
+            "approval.resolve"
+          ]
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "jsonRpcResponse": {
+      "type": "object",
+      "required": [
+        "jsonrpc",
+        "id"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "result": {
+          "type": "object"
+        },
+        "error": {
+          "$ref": "#/$defs/jsonRpcError"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "result"
+          ]
+        },
+        {
+          "required": [
+            "error"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "jsonRpcError": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeEvent": {
+      "type": "object",
+      "required": [
+        "event",
+        "runId"
+      ],
+      "properties": {
+        "event": {
+          "enum": [
+            "message.delta",
+            "tool.requested",
+            "approval.required",
+            "tool.result",
+            "run.completed",
+            "run.failed"
+          ]
+        },
+        "runId": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": "string"
+        },
+        "approvalId": {
+          "type": "string"
+        },
+        "delta": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "operation": {
+          "$ref": "#/$defs/toolOperation"
+        },
+        "outputPreview": {
+          "type": "string"
+        },
+        "error": {
+          "$ref": "#/$defs/jsonRpcError"
+        }
+      },
+      "additionalProperties": false
+    },
+    "toolOperation": {
+      "type": "object",
+      "required": [
+        "tool",
+        "risk"
+      ],
+      "properties": {
+        "tool": {
+          "enum": [
+            "shell",
+            "file.read",
+            "file.write"
+          ]
+        },
+        "command": {
+          "type": "string"
+        },
+        "workingDirectory": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "risk": {
+          "enum": [
+            "read-only",
+            "writes-files",
+            "executes-command",
+            "network-side-effect"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
