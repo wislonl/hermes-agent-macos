@@ -1,0 +1,21 @@
+.DS_Store
+.superpowers/
+
+# Build artifacts
+.build/
+DerivedData/
+build/
+dist/
+
+# Dependency folders
+node_modules/
+target/
+
+# Local configuration and secrets
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+
