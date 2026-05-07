@@ -8,8 +8,8 @@ final class AppStateTests: XCTestCase {
 
         state.submitDraft()
 
-        XCTAssertEqual(state.messages.last?.text, "Hello Hermes")
-        XCTAssertEqual(state.messages.last?.author, .user)
+        XCTAssertEqual(state.messages.suffix(2).first?.text, "Hello Hermes")
+        XCTAssertEqual(state.messages.suffix(2).first?.author, .user)
         XCTAssertEqual(state.draft, "")
     }
 }

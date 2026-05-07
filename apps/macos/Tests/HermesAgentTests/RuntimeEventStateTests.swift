@@ -1,0 +1,61 @@
+import XCTest
+@testable import HermesAgent
+
+final class RuntimeEventStateTests: XCTestCase {
+    func testApprovalRequiredAddsApprovalToolCall() {
+        let state = AppState()
+
+        state.apply(event: .approvalRequired(
+            runId: "run_1",
+            approvalId: "approval_1",
+            toolCallId: "tool_1",
+            command: "swift test --package-path apps/macos"
+        ))
+
+        XCTAssertEqual(state.toolCalls.count, 1)
+        XCTAssertEqual(state.toolCalls.last?.id, "approval_1")
+        XCTAssertEqual(state.toolCalls.last?.title, "Approval required")
+        XCTAssertEqual(state.toolCalls.last?.detail, "swift test --package-path apps/macos")
+        XCTAssertEqual(state.toolCalls.last?.requiresApproval, true)
+    }
+
+    func testToolRequestedAddsNonApprovalToolCall() {
+        let state = AppState()
+
+        state.apply(event: .toolRequested(
+            runId: "run_1",
+            toolCallId: "tool_1",
+            tool: "shell",
+            summary: "List project files"
+        ))
+
+        XCTAssertEqual(state.toolCalls.count, 1)
+        XCTAssertEqual(state.toolCalls.last?.id, "tool_1")
+        XCTAssertEqual(state.toolCalls.last?.title, "shell")
+        XCTAssertEqual(state.toolCalls.last?.detail, "List project files")
+        XCTAssertEqual(state.toolCalls.last?.requiresApproval, false)
+    }
+
+    func testMessageDeltaAddsAssistantMessage() {
+        let state = AppState()
+
+        state.apply(event: .messageDelta(runId: "run_1", delta: "Runtime response"))
+
+        XCTAssertEqual(state.messages.last?.author, .assistant)
+        XCTAssertEqual(state.messages.last?.text, "Runtime response")
+    }
+
+    func testSubmitDraftAppendsUserMessageAndMockAssistantEvent() {
+        let state = AppState()
+        state.draft = "Hello Hermes"
+
+        state.submitDraft()
+
+        XCTAssertEqual(state.messages.suffix(2).map(\.author), [.user, .assistant])
+        XCTAssertEqual(state.messages.suffix(2).map(\.text), [
+            "Hello Hermes",
+            "Hermes is connected to the workbench."
+        ])
+        XCTAssertEqual(state.draft, "")
+    }
+}
