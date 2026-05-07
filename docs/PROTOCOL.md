@@ -69,6 +69,8 @@ Request params:
 }
 ```
 
+For MVP shell previews, text that trims to `/shell` or begins with `/shell` followed by whitespace requests shell approval. The runtime emits `tool.requested` and `approval.required` events and does not execute the command until a later execution slice implements approval resolution.
+
 Response result:
 
 ```json
@@ -202,3 +204,5 @@ File write approval:
   }
 }
 ```
+
+Provider failures must be reported with stable, redacted error messages. Raw provider error strings can contain request metadata or credentials and must not be copied into protocol responses or runtime events.

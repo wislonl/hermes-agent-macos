@@ -6,7 +6,7 @@ The project is planned as an open-source app with a native SwiftUI interface, a 
 
 ## Status
 
-Hermes Agent is in initial design and scaffolding. The current focus is the product architecture, safety model, and first macOS app MVP.
+Hermes Agent is an early MVP. The repository now includes a SwiftUI macOS workbench, a Rust runtime, a typed JSON-RPC protocol schema, local session storage, Keychain-backed secret storage, shell approval previews, and a provider adapter boundary.
 
 ## MVP
 
@@ -55,12 +55,28 @@ docs/                       project documentation
 
 ## Development
 
-The implementation has not been scaffolded yet. Build and test commands will be added with the first app/runtime commits.
-
 Run all available local checks:
 
 ```bash
 ./scripts/check.sh
+```
+
+Run the runtime tests:
+
+```bash
+cargo test --manifest-path crates/hermes-runtime/Cargo.toml
+```
+
+Run the macOS app tests:
+
+```bash
+swift test --package-path apps/macos
+```
+
+Run the macOS app locally:
+
+```bash
+swift run --package-path apps/macos HermesAgent
 ```
 
 ## License

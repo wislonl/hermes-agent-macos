@@ -2,32 +2,32 @@
 
 ## MVP
 
-- Native macOS three-pane app.
-- Default Hermes agent profile.
-- Chat and task stream.
-- Local session history.
-- Runtime process launched by the app.
-- JSON-RPC communication over stdio.
-- OpenAI-compatible provider adapter.
-- Tool-call visibility.
-- Approval before shell commands and file writes.
-- Keychain-backed provider credentials.
+- [x] Native macOS three-pane app.
+- [x] Default Hermes agent profile.
+- [x] Chat and task stream.
+- [x] Local session history.
+- [ ] Runtime process launched by the app.
+- [x] JSON-RPC communication over stdio.
+- [x] Provider adapter boundary.
+- [x] Tool-call visibility.
+- [x] Approval preview before shell commands.
+- [ ] Approval before file writes.
+- [x] Keychain-backed provider credentials.
 
 ## Near Term
 
-- Research and coding agent profiles.
-- Workspace-scoped file browser context.
-- Better run timeline and searchable logs.
-- Provider configuration UI.
-- Exportable session summaries.
-- Signed macOS release artifact.
+- [x] Research and coding agent profiles.
+- [ ] Workspace-scoped file browser context.
+- [ ] Better run timeline and searchable logs.
+- [ ] Provider configuration UI.
+- [ ] Exportable session summaries.
+- [ ] Signed macOS release artifact.
 
 ## Later
 
-- Plugin-style tools.
-- More provider adapters.
-- Multi-agent task delegation.
-- Remote runtime option.
-- Team policy profiles.
-- Windows/Linux evaluation through Tauri or another cross-platform shell if demand is proven.
-
+- [ ] Plugin-style tools.
+- [ ] More provider adapters.
+- [ ] Multi-agent task delegation.
+- [ ] Remote runtime option.
+- [ ] Team policy profiles.
+- [ ] Windows/Linux evaluation through Tauri or another cross-platform shell if demand is proven.

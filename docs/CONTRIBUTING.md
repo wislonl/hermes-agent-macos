@@ -4,11 +4,11 @@ Hermes Agent is early-stage. Contributions should preserve the core direction: n
 
 ## Development Setup
 
-No buildable app or runtime exists in this repository yet. The first scaffolding PR must add exact setup commands for:
+Install the macOS and Rust toolchains:
 
-- Xcode and the macOS app.
-- Rust toolchain and runtime tests.
-- Protocol schema validation.
+- Xcode 15 or newer for Swift Package Manager and SwiftUI.
+- Rust stable for the local runtime.
+- Python 3 with `jsonschema` for protocol schema validation.
 
 Run all available local checks:
 
@@ -20,6 +20,19 @@ Protocol schema validation requires Python and `jsonschema`:
 
 ```bash
 python3 -m pip install jsonschema
+```
+
+Run component tests directly:
+
+```bash
+cargo test --manifest-path crates/hermes-runtime/Cargo.toml
+swift test --package-path apps/macos
+```
+
+Run the macOS app locally:
+
+```bash
+swift run --package-path apps/macos HermesAgent
 ```
 
 ## Pull Request Expectations

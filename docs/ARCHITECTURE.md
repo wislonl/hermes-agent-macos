@@ -32,6 +32,8 @@ Responsibilities:
 - Structured event streaming back to the app.
 - Runtime logs that can be inspected without exposing secrets.
 
+The current MVP runtime uses an `EchoProvider` through the provider adapter boundary. Real providers should plug into the same boundary without leaking provider errors or secrets into runtime events.
+
 ### Hermes Protocol
 
 The shared protocol lives in `packages/hermes-protocol/`.
@@ -81,6 +83,8 @@ Secrets must not be stored in the normal app database. API keys and provider cre
 
 The app should launch the runtime as a child process and communicate through stdio. If the runtime exits unexpectedly, the app should show a recoverable error and preserve the current session state.
 
+The current macOS workbench includes a deterministic in-app preview path for `/shell` prompts while process-runtime wiring continues to mature. The preview path creates approval requests and does not execute commands.
+
 ## Error Handling
 
 Errors should be classified into:
@@ -90,4 +94,3 @@ Errors should be classified into:
 - Internal protocol errors, such as malformed messages.
 
 The app should present concise user-facing messages while retaining redacted diagnostic logs for debugging.
-
