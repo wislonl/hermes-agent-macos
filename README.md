@@ -37,7 +37,7 @@ hermes --version
 ### 2. Clone this repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/hermes-agent-macos.git
+git clone https://github.com/wislonl/hermes-agent-macos.git
 cd hermes-agent-macos
 ```
 
