@@ -53,10 +53,35 @@ struct JsonRpcRequest<Params: Encodable>: Encodable {
     let method: String
     let params: Params
 
+    private enum CodingKeys: String, CodingKey {
+        case jsonrpc
+        case id
+        case method
+        case params
+    }
+
     init(id: JsonRpcID, method: String, params: Params) {
         self.id = id
         self.method = method
         self.params = params
+    }
+
+    func encode(to encoder: Encoder) throws {
+        guard id != .null else {
+            throw EncodingError.invalidValue(
+                id,
+                EncodingError.Context(
+                    codingPath: encoder.codingPath + [CodingKeys.id],
+                    debugDescription: "JSON-RPC requests must use a string or integer id."
+                )
+            )
+        }
+
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(jsonrpc, forKey: .jsonrpc)
+        try container.encode(id, forKey: .id)
+        try container.encode(method, forKey: .method)
+        try container.encode(params, forKey: .params)
     }
 }
 
@@ -66,17 +91,53 @@ struct JsonRpcResponse<Result: Decodable>: Decodable {
     let result: Result?
     let error: JsonRpcError?
 
-    private enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey, CaseIterable {
         case jsonrpc
         case id
         case result
         case error
     }
 
+    private struct AnyCodingKey: CodingKey {
+        let stringValue: String
+        let intValue: Int?
+
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+            intValue = nil
+        }
+
+        init?(intValue: Int) {
+            stringValue = String(intValue)
+            self.intValue = intValue
+        }
+    }
+
     init(from decoder: Decoder) throws {
+        let rawContainer = try decoder.container(keyedBy: AnyCodingKey.self)
+        let allowedKeys = Set(CodingKeys.allCases.map(\.stringValue))
+        let unknownKeys = rawContainer.allKeys.filter { !allowedKeys.contains($0.stringValue) }
+
+        guard unknownKeys.isEmpty else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "JSON-RPC response contains unknown top-level keys."
+                )
+            )
+        }
+
         let container = try decoder.container(keyedBy: CodingKeys.self)
         jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
         id = try container.decode(JsonRpcID.self, forKey: .id)
+
+        guard jsonrpc == "2.0" else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .jsonrpc,
+                in: container,
+                debugDescription: "JSON-RPC response version must be exactly 2.0."
+            )
+        }
 
         let hasResult = container.contains(.result)
         let hasError = container.contains(.error)
@@ -154,6 +215,30 @@ struct Workspace: Encodable {
 struct RunCreateResult: Decodable, Equatable {
     let runId: String
     let status: String
+
+    private enum CodingKeys: String, CodingKey {
+        case runId
+        case status
+    }
+
+    init(runId: String, status: String) {
+        self.runId = runId
+        self.status = status
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        runId = try container.decode(String.self, forKey: .runId)
+        status = try container.decode(String.self, forKey: .status)
+
+        guard status == "running" else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .status,
+                in: container,
+                debugDescription: "run.create result status must be running."
+            )
+        }
+    }
 }
 
 enum JSONValue: Decodable, Equatable {

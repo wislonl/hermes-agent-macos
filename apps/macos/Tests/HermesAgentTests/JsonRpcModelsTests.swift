@@ -39,6 +39,26 @@ final class JsonRpcModelsTests: XCTestCase {
         XCTAssertNil(response.error)
     }
 
+    func testResponseWithWrongJsonRpcVersionFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"1.0","id":"req_2","result":{"runId":"run_123","status":"running"}}
+                """
+            )
+        )
+    }
+
+    func testResponseWithExtraTopLevelKeyFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_2","result":{"runId":"run_123","status":"running"},"extra":true}
+                """
+            )
+        )
+    }
+
     func testErrorResponseDecodesNullID() throws {
         let response = try decodeRunCreateResponse(
             """
@@ -81,11 +101,46 @@ final class JsonRpcModelsTests: XCTestCase {
         )
     }
 
+    func testResponseWithNeitherResultNorErrorFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_2"}
+                """
+            )
+        )
+    }
+
     func testSuccessResponseWithNullIDFailsDecoding() {
         XCTAssertThrowsError(
             try decodeRunCreateResponse(
                 """
                 {"jsonrpc":"2.0","id":null,"result":{"runId":"run_123","status":"running"}}
+                """
+            )
+        )
+    }
+
+    func testRequestWithNullIDFailsEncoding() {
+        let request = JsonRpcRequest(
+            id: .null,
+            method: "run.create",
+            params: RunCreateParams(
+                sessionId: "session_123",
+                agentProfileId: "agent_hermes",
+                input: RunInput(type: "text", text: "Summarize this repository."),
+                workspace: Workspace(path: "/Users/example/project")
+            )
+        )
+
+        XCTAssertThrowsError(try JSONEncoder().encode(request))
+    }
+
+    func testRunCreateResultWithNonRunningStatusFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_2","result":{"runId":"run_123","status":"completed"}}
                 """
             )
         )
