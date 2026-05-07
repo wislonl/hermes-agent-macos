@@ -2,26 +2,31 @@ import SwiftUI
 
 struct WorkbenchView: View {
     @Bindable var state: AppState
-    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var showInspector = true
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            SidebarView(state: state)
-        } content: {
-            ConversationView(state: state)
-        } detail: {
-            InspectorView(state: state)
+        HStack(spacing: 0) {
+            NavigationSplitView {
+                SidebarView(state: state)
+            } detail: {
+                ConversationView(state: state)
+            }
+
+            if showInspector {
+                Divider()
+                InspectorView(state: state)
+                    .frame(width: 260)
+                    .transition(.move(edge: .trailing))
+            }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    withAnimation {
-                        columnVisibility = columnVisibility == .all ? .doubleColumn : .all
-                    }
+                    withAnimation(.easeInOut(duration: 0.2)) { showInspector.toggle() }
                 } label: {
                     Image(systemName: "sidebar.trailing")
                 }
-                .help(columnVisibility == .all ? "Hide Inspector" : "Show Inspector")
+                .help(showInspector ? "Hide Inspector" : "Show Inspector")
             }
         }
         .sheet(item: $state.pendingApproval) { prompt in

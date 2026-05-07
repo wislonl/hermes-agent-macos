@@ -44,6 +44,19 @@ struct SessionSummary: Identifiable, Equatable {
     var title: String
     var cwd: String
     var updatedAt: String?
+
+    var displayTitle: String {
+        let stripped = title
+            .replacingOccurrences(of: "<think>[\\s\\S]*?</think>",
+                                  with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return stripped.isEmpty ? "Session \(id.prefix(8))" : stripped
+    }
+
+    var displayCwd: String {
+        let home = NSHomeDirectory()
+        return cwd.hasPrefix(home) ? "~" + cwd.dropFirst(home.count) : cwd
+    }
 }
 
 struct AvailableModel: Identifiable, Equatable {

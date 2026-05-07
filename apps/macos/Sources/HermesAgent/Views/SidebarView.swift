@@ -57,8 +57,10 @@ struct SidebarView: View {
                 )) {
                     ForEach(state.sessions) { session in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(session.title.strippingThinkTags()).font(.headline).lineLimit(1)
-                            Text(session.cwd)
+                            Text(session.displayTitle)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Text(session.displayCwd)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)

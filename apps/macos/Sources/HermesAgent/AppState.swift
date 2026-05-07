@@ -32,7 +32,7 @@ final class AppState: NSObject {
     @ObservationIgnored private let executableURL: URL?
     @ObservationIgnored private var didStart = false
 
-    init(workspacePath: String = FileManager.default.currentDirectoryPath,
+    init(workspacePath: String = AppState.defaultWorkspacePath,
          executableURL: URL? = HermesLocator.findExecutable()) {
         self.workspacePath = workspacePath
         self.executableURL = executableURL
@@ -252,6 +252,17 @@ extension AppState: ACPClientDelegate {
             self.connectionState = .disconnected
             self.statusMessage = error.map { "Hermes exited: \($0.localizedDescription)" } ?? "Hermes exited."
         }
+    }
+}
+
+// MARK: - Defaults
+
+extension AppState {
+    // Prefer the user's home directory over whatever cwd the process inherits
+    // (bundled .app launched from Finder gets cwd = "/").
+    nonisolated static var defaultWorkspacePath: String {
+        let cwd = FileManager.default.currentDirectoryPath
+        return cwd == "/" ? NSHomeDirectory() : cwd
     }
 }
 
