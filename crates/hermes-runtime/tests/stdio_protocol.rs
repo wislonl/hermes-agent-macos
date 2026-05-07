@@ -16,6 +16,29 @@ fn run_runtime(stdin: &str) -> Vec<Value> {
     run_runtime_bytes(stdin)
 }
 
+fn run_create_request(id: &str, prompt: &str) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "method": "run.create",
+        "params": {
+            "sessionId": "session_123",
+            "agentProfileId": "agent_hermes",
+            "input": {
+                "type": "text",
+                "text": prompt
+            },
+            "workspace": {
+                "path": "/Users/example/project"
+            }
+        }
+    })
+}
+
+fn run_create_prompt(id: &str, prompt: &str) -> Vec<Value> {
+    run_runtime(&run_create_request(id, prompt).to_string())
+}
+
 #[test]
 fn handshake_returns_runtime_capabilities() {
     let output = run_runtime(
@@ -73,9 +96,7 @@ fn run_create_returns_running_response_and_mock_events() {
 
 #[test]
 fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
-    let output = run_runtime(
-        r#"{"jsonrpc":"2.0","id":"req_shell","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"/shell preview workspace"},"workspace":{"path":"/Users/example/project"}}}"#,
-    );
+    let output = run_create_prompt("req_shell", "/shell pwd");
 
     assert_eq!(output.len(), 4);
     assert_eq!(output[0]["jsonrpc"], "2.0");
@@ -84,13 +105,15 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
 
     let run_id = output[0]["result"]["runId"].as_str().unwrap();
     assert!(run_id.starts_with("run_"));
+    let tool_call_id = format!("tool_shell_preview_{}", run_id);
+    let approval_id = format!("approval_shell_preview_{}", run_id);
 
     assert_eq!(
         output[1],
         json!({
             "event": "message.delta",
             "runId": run_id,
-            "delta": "Hermes received: /shell preview workspace"
+            "delta": "Hermes received: /shell pwd"
         })
     );
     assert_eq!(
@@ -98,7 +121,7 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
         json!({
             "event": "tool.requested",
             "runId": run_id,
-            "toolCallId": "tool_shell_preview",
+            "toolCallId": tool_call_id,
             "tool": "shell",
             "summary": "Preview shell command"
         })
@@ -108,8 +131,8 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
         json!({
             "event": "approval.required",
             "runId": run_id,
-            "approvalId": "approval_shell_preview",
-            "toolCallId": "tool_shell_preview",
+            "approvalId": approval_id,
+            "toolCallId": tool_call_id,
             "operation": {
                 "tool": "shell",
                 "command": "pwd && ls",
@@ -128,10 +151,26 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
 }
 
 #[test]
+fn run_create_with_exact_shell_command_requests_approval() {
+    let output = run_create_prompt("req_exact_shell", "/shell");
+
+    assert_eq!(output.len(), 4);
+    assert_eq!(output[2]["event"], "tool.requested");
+    assert_eq!(output[3]["event"], "approval.required");
+}
+
+#[test]
+fn run_create_with_leading_whitespace_shell_command_requests_approval() {
+    let output = run_create_prompt("req_spaced_shell", "   /shell pwd");
+
+    assert_eq!(output.len(), 4);
+    assert_eq!(output[2]["event"], "tool.requested");
+    assert_eq!(output[3]["event"], "approval.required");
+}
+
+#[test]
 fn run_create_with_shell_mentioned_later_does_not_request_approval() {
-    let output = run_runtime(
-        r#"{"jsonrpc":"2.0","id":"req_shell_text","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Explain why /shell needs approval."},"workspace":{"path":"/Users/example/project"}}}"#,
-    );
+    let output = run_create_prompt("req_shell_text", "Explain why /shell needs approval.");
 
     assert_eq!(output.len(), 3);
     assert_eq!(output[0]["jsonrpc"], "2.0");
@@ -160,6 +199,70 @@ fn run_create_with_shell_mentioned_later_does_not_request_approval() {
     assert!(!output
         .iter()
         .any(|message| message["event"] == "approval.required"));
+}
+
+#[test]
+fn run_create_with_shellfish_prefix_does_not_request_approval() {
+    let output = run_create_prompt("req_shellfish", "/shellfish");
+
+    assert_eq!(output.len(), 3);
+    assert_eq!(output[2]["event"], "run.completed");
+    assert!(!output
+        .iter()
+        .any(|message| message["event"] == "approval.required"));
+}
+
+#[test]
+fn run_create_with_shellscript_prefix_does_not_request_approval() {
+    let output = run_create_prompt("req_shellscript", "/shellscript");
+
+    assert_eq!(output.len(), 3);
+    assert_eq!(output[2]["event"], "run.completed");
+    assert!(!output
+        .iter()
+        .any(|message| message["event"] == "approval.required"));
+}
+
+#[test]
+fn two_shell_requests_in_one_stdio_session_use_per_run_approval_and_tool_call_ids() {
+    let first_request = run_create_request("req_shell_first", "/shell pwd");
+    let second_request = run_create_request("req_shell_second", "/shell pwd");
+    let input = format!("{}\n{}", first_request, second_request);
+    let output = run_runtime(&input);
+
+    assert_eq!(output.len(), 8);
+
+    let first_run_id = output[0]["result"]["runId"].as_str().unwrap();
+    let second_run_id = output[4]["result"]["runId"].as_str().unwrap();
+    assert_ne!(first_run_id, second_run_id);
+
+    let first_tool_call_id = output[2]["toolCallId"].as_str().unwrap();
+    let first_approval_tool_call_id = output[3]["toolCallId"].as_str().unwrap();
+    let first_approval_id = output[3]["approvalId"].as_str().unwrap();
+    let second_tool_call_id = output[6]["toolCallId"].as_str().unwrap();
+    let second_approval_tool_call_id = output[7]["toolCallId"].as_str().unwrap();
+    let second_approval_id = output[7]["approvalId"].as_str().unwrap();
+
+    assert_eq!(first_tool_call_id, first_approval_tool_call_id);
+    assert_eq!(second_tool_call_id, second_approval_tool_call_id);
+    assert_ne!(first_tool_call_id, second_tool_call_id);
+    assert_ne!(first_approval_id, second_approval_id);
+    assert_eq!(
+        first_tool_call_id,
+        format!("tool_shell_preview_{}", first_run_id)
+    );
+    assert_eq!(
+        first_approval_id,
+        format!("approval_shell_preview_{}", first_run_id)
+    );
+    assert_eq!(
+        second_tool_call_id,
+        format!("tool_shell_preview_{}", second_run_id)
+    );
+    assert_eq!(
+        second_approval_id,
+        format!("approval_shell_preview_{}", second_run_id)
+    );
 }
 
 #[test]

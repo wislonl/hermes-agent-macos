@@ -33,17 +33,20 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                 delta: format!("Hermes received: {}", prompt),
             }];
 
-            if prompt.trim().starts_with("/shell") {
+            let trimmed = prompt.trim();
+            if trimmed == "/shell" || trimmed.starts_with("/shell ") {
+                let tool_call_id = format!("tool_shell_preview_{}", run_id);
+                let approval_id = format!("approval_shell_preview_{}", run_id);
                 events.push(RuntimeEvent::ToolRequested {
                     run_id: run_id.clone(),
-                    tool_call_id: "tool_shell_preview".to_string(),
+                    tool_call_id: tool_call_id.clone(),
                     tool: "shell".to_string(),
                     summary: "Preview shell command".to_string(),
                 });
                 events.push(RuntimeEvent::ApprovalRequired {
                     run_id: run_id.clone(),
-                    approval_id: "approval_shell_preview".to_string(),
-                    tool_call_id: "tool_shell_preview".to_string(),
+                    approval_id,
+                    tool_call_id,
                     operation: ToolOperation {
                         tool: "shell".to_string(),
                         command: Some("pwd && ls".to_string()),
