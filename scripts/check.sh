@@ -131,6 +131,20 @@ negative_cases = {
             "risk": "read-only"
         }
     },
+    "file.write approval missing content hash": {
+        "event": "approval.required",
+        "runId": "run_123",
+        "approvalId": "approval_123",
+        "toolCallId": "tool_123",
+        "operation": {
+            "tool": "file.write",
+            "path": "/Users/example/project/README.md",
+            "mode": "overwrite",
+            "contentPreview": "# Hermes Agent\n",
+            "byteCount": 15,
+            "risk": "writes-files"
+        }
+    },
     "failed tool.result without error": {
         "event": "tool.result",
         "runId": "run_123",

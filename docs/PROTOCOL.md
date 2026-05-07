@@ -165,7 +165,7 @@ File write approval:
 }
 ```
 
-`file.write` approvals must include the target path, write mode, content preview, byte count, and `writes-files` risk so the app can show the exact requested write before the user decides.
+`file.write` approvals must include the target path, write mode, content preview, byte count, lowercase SHA-256 content hash (`contentSha256`), and `writes-files` risk so the app can show and audit the exact requested write before the user decides.
 
 ### `tool.result`
 
