@@ -20,7 +20,7 @@ struct InspectorView: View {
                             Text(call.title).font(.headline)
                             Text(call.detail).font(.caption).foregroundStyle(.secondary)
                             if call.requiresApproval {
-                                let approval = state.approvals.first { $0.id == call.id }
+                                let approval = state.approvals.first { $0.id == call.approvalId }
                                 let decision = approval?.decision
 
                                 Label(statusText(for: decision), systemImage: "lock")
@@ -29,10 +29,10 @@ struct InspectorView: View {
                                 if decision == nil {
                                     HStack(spacing: 8) {
                                         Button("Approve") {
-                                            state.resolveApproval(id: call.id, decision: .approved)
+                                            resolve(call, as: .approved)
                                         }
                                         Button("Deny", role: .destructive) {
-                                            state.resolveApproval(id: call.id, decision: .denied)
+                                            resolve(call, as: .denied)
                                         }
                                     }
                                 }
@@ -45,6 +45,11 @@ struct InspectorView: View {
         }
         .padding()
         .frame(minWidth: 280)
+    }
+
+    private func resolve(_ call: ToolCall, as decision: ApprovalDecision) {
+        guard let approvalId = call.approvalId else { return }
+        state.resolveApproval(id: approvalId, decision: decision)
     }
 
     private func statusText(for decision: ApprovalDecision?) -> String {

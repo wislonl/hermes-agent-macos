@@ -13,10 +13,42 @@ final class RuntimeEventStateTests: XCTestCase {
         ))
 
         XCTAssertEqual(state.toolCalls.count, 1)
-        XCTAssertEqual(state.toolCalls.last?.id, "approval_1")
+        XCTAssertEqual(state.toolCalls.last?.id, "tool_1")
         XCTAssertEqual(state.toolCalls.last?.title, "Approval required")
         XCTAssertEqual(state.toolCalls.last?.detail, "swift test --package-path apps/macos")
         XCTAssertEqual(state.toolCalls.last?.requiresApproval, true)
+        XCTAssertEqual(state.toolCalls.last?.approvalId, "approval_1")
+        XCTAssertEqual(state.approvals, [
+            ApprovalRequest(
+                id: "approval_1",
+                command: "swift test --package-path apps/macos",
+                decision: nil
+            )
+        ])
+    }
+
+    func testApprovalRequiredUpdatesExistingToolCall() {
+        let state = AppState()
+
+        state.apply(event: .toolRequested(
+            runId: "run_1",
+            toolCallId: "tool_1",
+            tool: "shell",
+            summary: "Preview shell command"
+        ))
+        state.apply(event: .approvalRequired(
+            runId: "run_1",
+            approvalId: "approval_1",
+            toolCallId: "tool_1",
+            command: "pwd"
+        ))
+
+        XCTAssertEqual(state.toolCalls.count, 1)
+        XCTAssertEqual(state.toolCalls.last?.id, "tool_1")
+        XCTAssertEqual(state.toolCalls.last?.title, "shell")
+        XCTAssertEqual(state.toolCalls.last?.detail, "pwd")
+        XCTAssertEqual(state.toolCalls.last?.requiresApproval, true)
+        XCTAssertEqual(state.toolCalls.last?.approvalId, "approval_1")
     }
 
     func testToolRequestedAddsNonApprovalToolCall() {
@@ -34,6 +66,7 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.toolCalls.last?.title, "shell")
         XCTAssertEqual(state.toolCalls.last?.detail, "List project files")
         XCTAssertEqual(state.toolCalls.last?.requiresApproval, false)
+        XCTAssertNil(state.toolCalls.last?.approvalId)
     }
 
     func testMessageDeltaAddsAssistantMessage() {

@@ -23,4 +23,5 @@ struct ToolCall: Identifiable, Equatable {
     var title: String
     var detail: String
     var requiresApproval: Bool
+    var approvalId: String?
 }
