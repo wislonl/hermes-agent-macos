@@ -1,53 +1,38 @@
-# Contributing to Hermes Agent
+# Contributing
 
-Hermes Agent is early-stage. Contributions should preserve the core direction: native macOS experience, local-first data, explicit approval, and auditable tool execution.
+Hermes Agent.app is a thin native shell over the upstream Hermes Agent. Contributions should preserve that direction: ship a great Mac UX, and let Hermes own the agent behaviour.
 
 ## Development Setup
 
-Install the macOS and Rust toolchains:
+Requirements:
 
 - Xcode 15 or newer for Swift Package Manager and SwiftUI.
-- Rust stable for the local runtime.
-- Python 3 with `jsonschema` for protocol schema validation.
+- A working `hermes` install on `PATH` (see the README).
 
-Run all available local checks:
-
-```bash
-./scripts/check.sh
-```
-
-Protocol schema validation requires Python and `jsonschema`:
-
-```bash
-python3 -m pip install jsonschema
-```
-
-Run component tests directly:
-
-```bash
-cargo test --manifest-path crates/hermes-runtime/Cargo.toml
-swift test --package-path apps/macos
-```
-
-Run the macOS app locally:
+Run the app from source:
 
 ```bash
 swift run --package-path apps/macos HermesAgent
 ```
 
+Build a bundled `.app`:
+
+```bash
+./scripts/run-macos-app.sh
+```
+
+Run the project checks (currently a no-op until tests come back):
+
+```bash
+./scripts/check.sh
+```
+
 ## Pull Request Expectations
 
-- Keep changes focused.
-- Include tests for runtime logic, protocol parsing, and approval behavior.
-- Document new tools in the security model if they can affect local or remote state.
-- Do not introduce new external services without explaining the privacy and security impact.
+- Keep changes focused on the app surface (UI, ACP wiring, lifecycle).
+- New behaviour that belongs in the agent — providers, tools, memory, skills — should be proposed upstream at <https://github.com/NousResearch/hermes-agent>, not added here.
+- When you add a new ACP method or session update kind, document it in `docs/ARCHITECTURE.md`.
 
-## Security-Sensitive Changes
+## Probing the ACP Wire
 
-Changes involving shell execution, file writes, credentials, logging, provider requests, or approval policy require extra care. PRs in these areas should explain:
-
-- What new capability is added.
-- What the risk is.
-- Where user approval happens.
-- How secrets are protected.
-- What tests cover the behavior.
+The fastest way to verify a protocol assumption is to talk to `hermes acp` directly. The Python snippet in `docs/ARCHITECTURE.md` history (or any small subprocess harness with bidirectional pipes) works well; pure shell pipes do not, because Hermes' ACP transport requires real pipe file descriptors on stdout.

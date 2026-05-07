@@ -1,8 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "id": "req_2",
-  "result": {
-    "runId": "run_123",
-    "status": "running"
-  }
-}

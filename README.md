@@ -1,87 +1,62 @@
-# Hermes Agent
+# Hermes Agent.app
 
-Hermes Agent is a macOS-first AI agent desktop app for local, inspectable, user-approved agent work.
+A native macOS chat client for [Hermes Agent](https://hermes-agent.nousresearch.com/) by Nous Research.
 
-The project is planned as an open-source app with a native SwiftUI interface, a local Rust runtime, and a typed JSON-RPC protocol between them.
+The app is a thin SwiftUI shell. All agent work — model calls, tool execution, memory, skills, sessions — runs inside `hermes acp`, the official Agent Client Protocol server bundled with Hermes Agent. The app speaks ACP over stdio to that subprocess and renders its events into a native three-pane workbench.
 
 ## Status
 
-Hermes Agent is an early MVP. The repository now includes a SwiftUI macOS workbench, a Rust runtime, a typed JSON-RPC protocol schema, local session storage, Keychain-backed secret storage, shell approval previews, app-to-runtime JSON-RPC wiring, and Echo/OpenAI-compatible provider adapters.
+Early MVP. The app:
 
-## MVP
+- Launches `hermes acp` as a child process and completes the ACP `initialize` handshake.
+- Creates new sessions and lists / loads prior sessions through ACP.
+- Streams agent message chunks into a chat view as they arrive.
+- Renders tool calls and their progress in the inspector pane.
+- Surfaces ACP `session/request_permission` prompts as native sheets.
+- Switches models through the ACP `session/set_model` flow.
 
-The first version will provide:
+The app does not implement provider configuration, memory, skills, or tool execution itself. Configure those through Hermes directly (`hermes setup`, `hermes model`, `hermes skills`, etc.).
 
-- Native macOS three-pane workbench.
-- Chat-first Hermes agent session.
-- Lightweight agent profiles.
-- Local session history and run logs.
-- Tool-call visibility.
-- Approval before shell commands, file writes, and sensitive actions.
-- API key storage in macOS Keychain.
-- Provider presets for Echo, DeepSeek, OpenAI, OpenRouter, Together, Fireworks, Groq, Moonshot/Kimi, Qwen/Bailian, Zhipu/GLM, MiniMax, Volcengine Ark, Ollama, and custom OpenAI-compatible endpoints. API keys are stored in Keychain.
+## Requirements
 
-## Planned Architecture
+- macOS 14 or later.
+- A working `hermes` install on `PATH`. See <https://hermes-agent.nousresearch.com/docs/getting-started/quickstart>.
 
-```text
-Hermes.app (SwiftUI)
-        |
-        | JSON-RPC over local process stdio
-        v
-hermes-runtime (Rust)
-        |
-        +-- model provider adapters
-        +-- local tools
-        +-- approval policy checks
-        +-- structured run logs
-```
+The app finds `hermes` by searching, in order: `$HERMES_EXECUTABLE`, `~/.local/bin/hermes`, `/usr/local/bin/hermes`, `/opt/homebrew/bin/hermes`, and finally `command -v hermes` in your login shell.
 
-## Repository Layout
-
-```text
-apps/macos/                 macOS SwiftUI application
-crates/hermes-runtime/      Rust local runtime
-packages/hermes-protocol/   shared protocol schemas and generated types
-docs/                       project documentation
-```
-
-## Design Principles
-
-- Native Mac experience first.
-- Local-first data and logs.
-- Explicit trust boundaries.
-- Tool calls must be visible and auditable.
-- Sensitive actions require user approval.
-- Multi-agent support starts as lightweight profiles, not a full orchestration platform.
-
-## Development
-
-Run all available local checks:
-
-```bash
-./scripts/check.sh
-```
-
-Run the runtime tests:
-
-```bash
-cargo test --manifest-path crates/hermes-runtime/Cargo.toml
-```
-
-Run the macOS app tests:
-
-```bash
-swift test --package-path apps/macos
-```
-
-Run the macOS app locally:
+## Run from source
 
 ```bash
 swift run --package-path apps/macos HermesAgent
 ```
 
-From Finder, double-click `Open Hermes Agent.command` in the repository root to build and launch the packaged app with the runtime bundled.
+## Build a bundled .app
+
+```bash
+./scripts/run-macos-app.sh
+```
+
+This produces `apps/macos/.build/HermesAgent.app` and opens it.
+
+From Finder, double-click `Open Hermes Agent.command` to do the same.
+
+## Repository layout
+
+```text
+apps/macos/                                macOS SwiftUI app
+  Sources/HermesAgent/
+    HermesAgentApp.swift                   App entry, menu commands
+    AppState.swift                         Observable state, ACP client owner
+    Models.swift                           UI value types
+    Views/                                 Three-pane workbench
+    ACP/
+      ACPSchema.swift                      ACP wire types
+      JsonRpcTransport.swift               Bidirectional newline-delimited JSON-RPC
+      ACPClient.swift                      High-level ACP client
+docs/                                      Project documentation
+scripts/                                   Build and bundling scripts
+```
 
 ## License
 
-Hermes Agent is licensed under the Apache License 2.0. See `LICENSE`.
+Apache License 2.0. See `LICENSE`.

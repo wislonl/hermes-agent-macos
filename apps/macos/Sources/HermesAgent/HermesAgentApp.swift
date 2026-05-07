@@ -10,5 +10,13 @@ struct HermesAgentApp: App {
                 .frame(minWidth: 1080, minHeight: 720)
         }
         .windowStyle(.titleBar)
+        .commands {
+            CommandGroup(after: .newItem) {
+                Button("New Hermes Session") {
+                    Task { await state.startNewSession() }
+                }
+                .keyboardShortcut("n", modifiers: [.command])
+            }
+        }
     }
 }

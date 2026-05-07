@@ -1,9 +1,0 @@
-{
-  "jsonrpc": "2.0",
-  "id": "req_provider_test",
-  "result": {
-    "status": "ok",
-    "provider": "MiniMax (China)",
-    "model": "MiniMax-M2.7-highspeed"
-  }
-}

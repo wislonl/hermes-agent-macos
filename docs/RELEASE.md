@@ -1,17 +1,22 @@
-# Release Process
+# Release
 
-Hermes Agent does not have a signed app release yet.
+Hermes Agent.app does not have a signed release yet.
 
-For early local testing:
+For local use:
 
 ```bash
 swift run --package-path apps/macos HermesAgent
 ```
 
+For a bundled `.app`:
+
+```bash
+./scripts/run-macos-app.sh
+```
+
 Before the first public release:
 
-- Add a signed macOS app bundle workflow.
-- Produce a `.zip` or `.dmg` artifact.
-- Verify Keychain access in the packaged app.
-- Verify runtime child-process startup from the app bundle.
+- Sign and notarise the `.app` bundle.
+- Decide whether to ship `hermes` itself with the app, or keep requiring an existing install. Bundling needs a Python runtime story.
 - Add screenshots and a short demo GIF to the README.
+- Document the minimum supported Hermes version.

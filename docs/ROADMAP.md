@@ -1,35 +1,30 @@
-# Hermes Agent Roadmap
+# Roadmap
 
 ## MVP
 
-- [x] Native macOS three-pane app.
-- [x] Default Hermes agent profile.
-- [x] Chat and task stream.
-- [x] Local session history.
-- [x] Runtime process launched by the app.
-- [x] Runtime JSON-RPC stdio transport.
-- [x] App-to-runtime child process JSON-RPC wiring.
-- [x] Provider adapter boundary.
-- [x] DeepSeek provider adapter.
-- [x] Tool-call visibility.
-- [x] Approval preview before shell commands.
-- [ ] Approval before file writes.
-- [x] Keychain-backed provider credentials.
+- [x] Native macOS three-pane SwiftUI app.
+- [x] Spawn and supervise `hermes acp` subprocess.
+- [x] ACP `initialize` handshake.
+- [x] `session/new` and chat streaming via `agent_message_chunk`.
+- [x] `session/list` + `session/load` for the sidebar.
+- [x] Tool-call visibility via `tool_call` and `tool_call_update`.
+- [x] Approval prompts via `session/request_permission`.
+- [x] Model switching via `session/set_model`.
+- [ ] Cancel button wired through `session/cancel` (basic version present, needs UI polish).
+- [ ] Reconnect path when `hermes acp` exits unexpectedly.
 
 ## Near Term
 
-- [x] Research and coding agent profiles.
-- [ ] Workspace-scoped file browser context.
-- [ ] Better run timeline and searchable logs.
-- [x] Provider configuration UI.
-- [ ] Exportable session summaries.
-- [ ] Signed macOS release artifact.
+- [ ] Markdown rendering for agent messages and tool output.
+- [ ] Slash command palette driven by `available_commands_update`.
+- [ ] Session search filter in the sidebar.
+- [ ] Workspace picker (currently uses the app's current directory).
+- [ ] Stable status indicator with link to `hermes doctor` output on failures.
+- [ ] Signed and notarised `.app` release.
 
 ## Later
 
-- [ ] Plugin-style tools.
-- [ ] More provider adapters.
-- [ ] Multi-agent task delegation.
-- [ ] Remote runtime option.
-- [ ] Team policy profiles.
-- [ ] Windows/Linux evaluation through Tauri or another cross-platform shell if demand is proven.
+- [ ] Image / file attachments (ACP supports image and resource content blocks).
+- [ ] Multi-window sessions.
+- [ ] Embed the `hermes dashboard` web UI as a fallback view.
+- [ ] Quick-action menu bar item that wakes Hermes from anywhere.

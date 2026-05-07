@@ -1,98 +1,77 @@
-# Hermes Agent Architecture
+# Architecture
 
 ## Overview
 
-Hermes Agent is split into a native macOS app, a local runtime, and a shared protocol. The app owns the user experience and approval surfaces. The runtime owns model calls, tool execution, and structured run events. The protocol keeps the boundary explicit and testable.
+Hermes Agent.app is a SwiftUI macOS shell over the [Hermes Agent](https://hermes-agent.nousresearch.com/) Python CLI. The app owns the window, the chat surface, and the approval prompts. Everything that makes Hermes an agent — provider adapters, the agent loop, tool execution, memory, skills, sessions — lives in the upstream `hermes` binary and is reached over ACP.
+
+```
+Hermes.app (SwiftUI)
+    │
+    │  Agent Client Protocol (newline-delimited JSON-RPC 2.0 over stdio)
+    │
+    ▼
+hermes acp (child process, Nous Research Hermes Agent)
+    ├── model providers (200+ models)
+    ├── tools, skills, MCP servers
+    ├── memory, sessions, FTS5 search
+    └── permission system (request_permission ↔ app)
+```
 
 ## Components
 
 ### macOS App
 
-The macOS app lives in `apps/macos/` and is built with SwiftUI, with AppKit bridges where native macOS integration requires them.
+`apps/macos/` is a Swift Package with a single executable target.
 
 Responsibilities:
 
-- Window, navigation, menus, and keyboard shortcuts.
-- Three-pane workbench UI.
-- Session and message presentation.
-- Tool-call and approval UI.
-- Local settings and Keychain access.
-- Starting, stopping, and monitoring the local runtime process.
+- Window lifecycle, menus, keyboard shortcuts, three-pane workbench.
+- Spawning and supervising `hermes acp` as a child process.
+- Translating ACP wire messages into SwiftUI state.
+- Presenting permission prompts as modal sheets.
+- Letting the user pick a session and switch the active model.
+
+Non-responsibilities (delegated entirely to Hermes):
+
+- Provider, model, or API-key configuration. Use `hermes setup` / `hermes model`.
+- Tool execution, sandboxing, or shell command running.
+- Persistent storage of sessions, memory, or skills.
 
 ### Hermes Runtime
 
-The runtime lives in `crates/hermes-runtime/` and is implemented in Rust.
+The agent is the upstream `hermes` Python binary, located via `$HERMES_EXECUTABLE` or by searching `PATH`. The app launches it as `hermes acp`. See the [ACP server source](https://github.com/NousResearch/hermes-agent/tree/main/acp_adapter) for the authoritative protocol surface Hermes implements.
 
-Responsibilities:
+### Agent Client Protocol
 
-- JSON-RPC server over stdio.
-- Model provider adapters.
-- Tool registry and tool execution.
-- Approval policy enforcement before sensitive work.
-- Structured event streaming back to the app.
-- Runtime logs that can be inspected without exposing secrets.
+ACP is the open protocol used by Zed, VS Code, JetBrains, and other editors to drive agents. It is bidirectional newline-delimited JSON-RPC 2.0 over stdio.
 
-The current MVP runtime falls back to `EchoProvider` when no provider is configured. The app exposes provider presets for common OpenAI-compatible services, stores non-secret provider settings in app preferences, and stores API keys in Keychain. When a run starts, the app passes only the selected provider's base URL, model, and secret environment to the runtime, which uses the shared OpenAI-compatible adapter. Provider errors and secrets must not leak into runtime events.
+The app uses the following methods:
 
-### Hermes Protocol
-
-The shared protocol lives in `packages/hermes-protocol/`.
-
-Responsibilities:
-
-- Define request, response, event, error, and tool-call schemas.
-- Keep app/runtime communication stable.
-- Support generated Swift and Rust types when practical.
-- Version breaking changes explicitly.
-
-## Data Flow
-
-1. The user sends a task from the macOS app.
-2. The app sends a `run.create` request to the runtime.
-3. The runtime emits events such as `message.delta`, `tool.requested`, `approval.required`, `tool.result`, and `run.completed`.
-4. The app renders the stream in the center pane and tool details in the right pane.
-5. If approval is required, the app asks the user and records the decision.
-6. The target protocol flow will send `approval.resolve` so the runtime can continue, cancel, or fail the run based on the exact approval decision.
-
-The current MVP implements shell approval preview and local decision recording. It does not execute shell commands or send approval decisions back to the runtime yet.
+| Direction | Method | Purpose |
+|---|---|---|
+| client → agent | `initialize` | Handshake, capability exchange |
+| client → agent | `session/new` | Create a session in a workspace |
+| client → agent | `session/load` | Reopen an existing session |
+| client → agent | `session/list` | List sessions for the sidebar |
+| client → agent | `session/prompt` | Send a user message |
+| client → agent | `session/cancel` | Interrupt the running turn |
+| client → agent | `session/set_model` | Switch the model |
+| agent → client | `session/update` | Stream chunks: `agent_message_chunk`, `agent_thought_chunk`, `tool_call`, `tool_call_update`, `available_commands_update` |
+| agent → client | `session/request_permission` | Synchronously ask the user before a sensitive action |
 
 ## Trust Boundaries
 
-The app is the user-facing authority for approvals. The runtime must not execute sensitive actions until it has received an explicit approval decision for the exact action being performed.
+The app is the user-facing authority for any action that needs human approval. ACP routes those approvals through `session/request_permission`: Hermes pauses the run, the app shows a sheet with the proposed action and option list, and the chosen `optionId` is sent back as the response. Hermes only proceeds after that response.
 
-Sensitive actions include:
-
-- Shell command execution.
-- File writes, deletes, and moves.
-- Network requests with side effects.
-- Credential access.
-- Launching external apps or opening URLs that cause side effects.
+API keys, OAuth tokens, and other secrets are stored by Hermes (`~/.hermes/auth.json` and `~/.hermes/.env`). The app never touches those files.
 
 ## Storage
 
-Local storage should include:
-
-- Agent profiles.
-- Sessions.
-- Messages.
-- Tool calls.
-- Approval decisions.
-- Redacted run logs.
-
-Secrets must not be stored in the normal app database. API keys and provider credentials belong in macOS Keychain.
-
-## Runtime Lifecycle
-
-The app should launch the runtime as a child process and communicate through stdio. If the runtime exits unexpectedly, the app should show a recoverable error and preserve the current session state.
-
-The current macOS workbench includes a deterministic in-app preview path for `/shell` prompts while process-runtime wiring continues to mature. The preview path creates approval requests and does not execute commands.
+The app is stateless across launches. All session history, memory, and skill state lives under `~/.hermes/` and is queried back through ACP each time the app starts.
 
 ## Error Handling
 
-Errors should be classified into:
-
-- User-correctable errors, such as missing API keys or denied permissions.
-- Runtime errors, such as provider failures or invalid tool arguments.
-- Internal protocol errors, such as malformed messages.
-
-The app should present concise user-facing messages while retaining redacted diagnostic logs for debugging.
+- `hermes` not found: app refuses to start and shows an actionable status message.
+- Subprocess crash mid-run: pending requests fail with `processNotRunning`; the inspector shows the disconnected state.
+- Decode failure on a session update: the event is dropped silently (logged in future versions); other updates continue.
+- Permission request abandoned (sheet dismissed): the app responds with `outcome: "cancelled"`, which Hermes treats as a deny.

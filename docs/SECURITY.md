@@ -1,61 +1,38 @@
-# Hermes Agent Security Model
+# Security Model
 
-## Security Goals
+Hermes Agent.app delegates all sensitive work — running shell commands, writing files, making network requests, accessing credentials — to the upstream `hermes` binary. The app's security responsibilities are narrow: render the agent's permission requests faithfully, and never bypass them.
 
-Hermes Agent should make local agent work inspectable and user-controlled. The app must treat model output as untrusted and must require approval before sensitive local actions.
+## Trust Boundary
 
-## Secret Handling
+| Concern | Where it lives |
+|---|---|
+| Model output (untrusted text) | Rendered by the app, executed only via Hermes tools. |
+| API keys, OAuth tokens | Owned by Hermes (`~/.hermes/auth.json`, `~/.hermes/.env`). The app does not read or store them. |
+| Tool execution | Hermes runtime. The app does not exec shell commands, write files, or make HTTP requests on the user's behalf. |
+| Approval policy | Hermes decides what requires approval. The app shows the resulting `session/request_permission` prompts. |
 
-- Store API keys and provider credentials in macOS Keychain.
-- Never print secrets to logs.
-- Never include secrets in crash reports, run logs, prompt exports, or issue templates.
-- Redact credential-like values before rendering runtime diagnostics.
-- Provider adapters must receive secrets through explicit configuration paths and must never include secret values in runtime events. Provider request logs must redact authorization headers and API keys.
+## Permission Prompts
 
-## Tool Approval Policy
+When Hermes calls `session/request_permission`, the app:
 
-The runtime must request approval before:
+1. Pauses any other interaction with the agent.
+2. Shows a sheet with the title supplied by Hermes and one button per option.
+3. Sends the chosen `optionId` back as the response.
+4. If the user dismisses the sheet, responds with `outcome: "cancelled"` (treated by Hermes as a deny).
 
-- Executing shell commands.
-- Writing, deleting, moving, or overwriting files.
-- Sending network requests with side effects.
-- Accessing credentials.
-- Launching external apps.
+The app never auto-approves. There is no "always allow" toggle in the app — those policies live inside Hermes (`hermes hooks`, `hermes config`).
 
-Approval prompts must show:
+## Subprocess Hygiene
 
-- The tool name.
-- The exact command or operation.
-- The working directory or target path.
-- The expected side effect.
-- Whether the action is one-time or part of a repeated run.
+- The `hermes acp` child inherits the user's environment. The app does not inject secrets into its environment.
+- stderr from `hermes acp` is drained but not surfaced in the UI yet. Future versions may route it to a diagnostics panel.
+- On app exit the subprocess is terminated.
 
-The approval decision must apply only to the exact requested action. Broad approval modes can be added later, but they must be explicit, time-bounded, and visible in the UI.
+## Out of Scope (for now)
 
-## File Access
+- Sandboxing the `hermes` subprocess. Hermes itself supports sandboxes (Docker, Daytona, Modal); configure those through `hermes`.
+- Audit logging from the app. Hermes' own session log is the system of record.
 
-Read access should be scoped to the selected workspace when possible. Write access should default to approval-required. The app should make the active workspace visible so users know what the agent can inspect.
+## Reporting Vulnerabilities
 
-## Shell Execution
-
-Shell execution is high risk. Commands should be displayed exactly before execution. The runtime should avoid shell interpolation when a structured process API is available.
-
-Destructive commands require especially clear approval text. Examples include:
-
-- Recursive deletion.
-- Force pushes.
-- Database drops.
-- Permission changes.
-- Credential or keychain commands.
-
-## Network Access
-
-Provider calls are expected. Other network tools should be visible and categorized. Requests that mutate remote state require approval.
-
-## Logging
-
-Runtime logs should be structured and redacted. Logs should include enough information to debug protocol and tool behavior without exposing private prompts, credentials, or full file contents unless the user explicitly exports them.
-
-## Vulnerability Reporting
-
-Before public release, the project should define a private vulnerability reporting channel in this document. Until then, security issues should not be reported with secrets or exploit details in public GitHub issues.
+Until a private channel is published, do not file exploit details on public issue trackers. Reach out to the maintainers directly.

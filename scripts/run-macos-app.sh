@@ -6,13 +6,11 @@ APP_DIR="$ROOT_DIR/apps/macos/.build/HermesAgent.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 
-cargo build --manifest-path "$ROOT_DIR/crates/hermes-runtime/Cargo.toml"
 swift build --package-path "$ROOT_DIR/apps/macos" --product HermesAgent
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR"
 cp "$ROOT_DIR/apps/macos/.build/debug/HermesAgent" "$MACOS_DIR/HermesAgent"
-cp "$ROOT_DIR/crates/hermes-runtime/target/debug/hermes-runtime" "$MACOS_DIR/hermes-runtime"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
