@@ -16,7 +16,7 @@ struct InspectorView: View {
             connectionFooter
         }
         .padding()
-        .frame(minWidth: 320)
+        .frame(minWidth: 240)
         .navigationTitle("Inspector")
     }
 
