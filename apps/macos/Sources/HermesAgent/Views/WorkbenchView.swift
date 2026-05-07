@@ -11,41 +11,13 @@ struct WorkbenchView: View {
         } detail: {
             InspectorView(state: state)
         }
-        .toolbar {
-            ToolbarItem(placement: .status) {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(connectionColor(for: state.connectionState))
-                        .frame(width: 7, height: 7)
-                    Text(toolbarLabel(for: state.connectionState))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
+
         .sheet(item: $state.pendingApproval) { prompt in
             ApprovalSheet(prompt: prompt) { decision in
                 state.resolveApproval(optionId: decision)
             }
         }
         .onAppear { state.startIfNeeded() }
-    }
-}
-
-private func connectionColor(for state: AppState.ConnectionState) -> Color {
-    switch state {
-    case .ready: return .green
-    case .starting: return .yellow
-    case .failed, .disconnected: return .red
-    }
-}
-
-private func toolbarLabel(for state: AppState.ConnectionState) -> String {
-    switch state {
-    case .ready: return "Connected"
-    case .starting: return "Connecting…"
-    case .failed: return "Disconnected"
-    case .disconnected: return "Disconnected"
     }
 }
 
