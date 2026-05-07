@@ -46,15 +46,21 @@ struct SessionSummary: Identifiable, Equatable {
     var updatedAt: String?
 
     var displayTitle: String {
-        let stripped = title
-            .replacingOccurrences(of: "<think>[\\s\\S]*?</think>",
-                                  with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return stripped.isEmpty ? "Session \(id.prefix(8))" : stripped
+        var s = title
+        // If there's a closing </think>, keep only what comes after it.
+        if let closeRange = s.range(of: "</think>", options: .caseInsensitive) {
+            s = String(s[closeRange.upperBound...])
+        } else if let openRange = s.range(of: "<think>", options: .caseInsensitive) {
+            // Unclosed <think> block — drop everything from it onward.
+            s = String(s[s.startIndex..<openRange.lowerBound])
+        }
+        s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        return s.isEmpty ? "Session \(id.prefix(8))" : s
     }
 
     var displayCwd: String {
         let home = NSHomeDirectory()
+        if cwd == "/" { return "~" }
         return cwd.hasPrefix(home) ? "~" + cwd.dropFirst(home.count) : cwd
     }
 }
