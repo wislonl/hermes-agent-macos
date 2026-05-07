@@ -2,6 +2,8 @@
 
 A native macOS chat client for [Hermes Agent](https://hermes-agent.nousresearch.com/) by Nous Research.
 
+![Hermes Agent for macOS](docs/screenshot.png)
+
 Built with SwiftUI. All agent work — model calls, tool execution, memory, skills, sessions — runs inside `hermes acp`. This app speaks the Agent Client Protocol (ACP) over stdio to that subprocess and renders its events into a native three-pane workbench.
 
 ## Features
