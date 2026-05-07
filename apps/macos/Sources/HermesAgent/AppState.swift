@@ -129,7 +129,9 @@ final class AppState: NSObject {
             let result = try await client.loadSession(sessionId: sessionId, cwd: cwd)
             self.currentSessionId = sessionId
             self.workspacePath = cwd
-            self.messages = messageCache[sessionId] ?? []
+            self.messages = messageCache[sessionId]
+                ?? loadMessagesFromFile(sessionId: sessionId)
+                ?? []
             self.toolCalls = toolCallCache[sessionId] ?? []
             self.applyModelState(result.models)
         } catch {
@@ -158,6 +160,17 @@ final class AppState: NSObject {
         try? await client.cancel(sessionId: sessionId)
     }
 
+    func deleteSession(_ sessionId: String) {
+        let filePath = NSHomeDirectory() + "/.hermes/sessions/session_\(sessionId).json"
+        try? FileManager.default.removeItem(atPath: filePath)
+        sessions.removeAll { $0.id == sessionId }
+        messageCache.removeValue(forKey: sessionId)
+        toolCallCache.removeValue(forKey: sessionId)
+        if currentSessionId == sessionId {
+            Task { await startNewSession() }
+        }
+    }
+
     func resolveApproval(optionId: String?) {
         guard let permission = pendingPermission, let client else { return }
         pendingPermission = nil
@@ -168,6 +181,37 @@ final class AppState: NSObject {
     }
 
     // MARK: - Private helpers
+
+    // Read conversation history from hermes's session JSON file.
+    // Returns nil if the file doesn't exist or can't be parsed.
+    private func loadMessagesFromFile(sessionId: String) -> [ChatMessage]? {
+        let path = NSHomeDirectory() + "/.hermes/sessions/session_\(sessionId).json"
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rawMessages = json["messages"] as? [[String: Any]]
+        else { return nil }
+
+        var result: [ChatMessage] = []
+        for msg in rawMessages {
+            guard let role = msg["role"] as? String else { continue }
+            switch role {
+            case "user":
+                let content = (msg["content"] as? String) ?? ""
+                if !content.isEmpty {
+                    result.append(ChatMessage(id: UUID(), author: .user, text: content))
+                }
+            case "assistant":
+                let raw = (msg["content"] as? String) ?? ""
+                let cleaned = raw.strippingHermesMarkup()
+                if !cleaned.isEmpty {
+                    result.append(ChatMessage(id: UUID(), author: .agent, text: cleaned))
+                }
+            default:
+                break
+            }
+        }
+        return result.isEmpty ? nil : result
+    }
 
     private func refreshSessions() async {
         guard let client else { return }

@@ -1,5 +1,29 @@
 import Foundation
 
+extension String {
+    // Strip think blocks and tool-call XML from assistant messages before display.
+    func strippingHermesMarkup() -> String {
+        var s = self
+        // Remove complete <think>...</think> blocks
+        while let open = s.range(of: "<think>", options: .caseInsensitive),
+              let close = s.range(of: "</think>", options: .caseInsensitive),
+              open.lowerBound < close.lowerBound {
+            s.removeSubrange(open.lowerBound..<close.upperBound)
+        }
+        // Remove unclosed leading <think> block
+        if let open = s.range(of: "<think>", options: .caseInsensitive) {
+            s.removeSubrange(open.lowerBound...)
+        }
+        // Remove minimax tool-call XML blocks
+        while let open = s.range(of: "<minimax:tool_call>", options: .caseInsensitive),
+              let close = s.range(of: "</minimax:tool_call>", options: .caseInsensitive),
+              open.lowerBound < close.lowerBound {
+            s.removeSubrange(open.lowerBound..<close.upperBound)
+        }
+        return s.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 struct ChatMessage: Identifiable, Equatable {
     enum Author: Equatable {
         case user

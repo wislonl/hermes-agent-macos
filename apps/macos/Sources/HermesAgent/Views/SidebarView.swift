@@ -67,6 +67,13 @@ struct SidebarView: View {
                                 .truncationMode(.middle)
                         }
                         .tag(session.id)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                state.deleteSession(session.id)
+                            } label: {
+                                Label("Delete Session", systemImage: "trash")
+                            }
+                        }
                     }
                 }
                 .listStyle(.sidebar)
