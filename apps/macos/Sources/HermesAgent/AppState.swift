@@ -76,7 +76,41 @@ final class AppState {
         guard !trimmed.isEmpty else { return }
 
         messages.append(ChatMessage(id: UUID(), author: .user, text: trimmed))
-        apply(event: .messageDelta(runId: "run_preview", delta: "Hermes is connected to the workbench."))
+        if let command = shellCommand(from: trimmed) {
+            apply(event: .toolRequested(
+                runId: "run_preview",
+                toolCallId: "tool_shell_preview_run_preview",
+                tool: "shell",
+                summary: "Preview shell command"
+            ))
+            apply(event: .approvalRequired(
+                runId: "run_preview",
+                approvalId: "approval_shell_preview_run_preview",
+                toolCallId: "tool_shell_preview_run_preview",
+                command: command
+            ))
+        } else {
+            apply(event: .messageDelta(runId: "run_preview", delta: "Hermes is connected to the workbench."))
+        }
         draft = ""
+    }
+
+    private func shellCommand(from prompt: String) -> String? {
+        if prompt == "/shell" {
+            return "pwd && ls"
+        }
+
+        guard prompt.hasPrefix("/shell") else {
+            return nil
+        }
+
+        let remaining = String(prompt.dropFirst("/shell".count))
+        guard remaining.first?.isWhitespace == true
+        else {
+            return nil
+        }
+
+        let command = remaining.trimmingCharacters(in: .whitespacesAndNewlines)
+        return command.isEmpty ? "pwd && ls" : command
     }
 }

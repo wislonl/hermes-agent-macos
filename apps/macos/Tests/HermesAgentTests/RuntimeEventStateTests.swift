@@ -115,4 +115,37 @@ final class RuntimeEventStateTests: XCTestCase {
         ])
         XCTAssertEqual(state.draft, "")
     }
+
+    func testSubmitDraftWithShellPromptCreatesApprovalRequest() {
+        let state = AppState()
+        state.draft = "/shell pwd && ls"
+
+        state.submitDraft()
+
+        XCTAssertEqual(state.messages.last?.author, .user)
+        XCTAssertEqual(state.messages.last?.text, "/shell pwd && ls")
+        XCTAssertEqual(state.toolCalls.count, 1)
+        XCTAssertEqual(state.toolCalls.last?.title, "shell")
+        XCTAssertEqual(state.toolCalls.last?.detail, "pwd && ls")
+        XCTAssertEqual(state.toolCalls.last?.requiresApproval, true)
+        XCTAssertEqual(state.approvals, [
+            ApprovalRequest(
+                id: "approval_shell_preview_run_preview",
+                command: "pwd && ls",
+                decision: nil
+            )
+        ])
+        XCTAssertEqual(state.draft, "")
+    }
+
+    func testSubmitDraftWithShellMentionLaterDoesNotCreateApprovalRequest() {
+        let state = AppState()
+        state.draft = "Explain why /shell needs approval."
+
+        state.submitDraft()
+
+        XCTAssertTrue(state.toolCalls.isEmpty)
+        XCTAssertTrue(state.approvals.isEmpty)
+        XCTAssertEqual(state.messages.last?.author, .assistant)
+    }
 }
