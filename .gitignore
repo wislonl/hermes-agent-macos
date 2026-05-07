@@ -6,6 +6,14 @@
 DerivedData/
 build/
 dist/
+*.app
+
+# Swift Package Manager
+.swiftpm/
+
+# Xcode
+*.xcuserstate
+xcuserdata/
 
 # Dependency folders
 node_modules/
