@@ -1,6 +1,7 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::provider::{EchoProvider, ModelProvider, ProviderRequest};
 use crate::protocol::{JsonRpcError, RuntimeEvent};
 use crate::tools::ToolOperation;
 
@@ -28,10 +29,22 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                 .pointer("/input/text")
                 .and_then(Value::as_str)
                 .unwrap_or("Start Hermes run.");
-            let mut events = vec![RuntimeEvent::MessageDelta {
-                run_id: run_id.clone(),
-                delta: format!("Hermes received: {}", prompt),
-            }];
+            let provider = EchoProvider;
+            let deltas = provider
+                .stream(ProviderRequest {
+                    input: prompt.to_string(),
+                })
+                .map_err(|error| JsonRpcError {
+                    code: -32603,
+                    message: format!("Provider stream failed: {}", error),
+                })?;
+            let mut events = deltas
+                .into_iter()
+                .map(|delta| RuntimeEvent::MessageDelta {
+                    run_id: run_id.clone(),
+                    delta: delta.text,
+                })
+                .collect::<Vec<_>>();
 
             if let Some(command) = shell_command_from_prompt(prompt) {
                 let tool_call_id = format!("tool_shell_preview_{}", run_id);

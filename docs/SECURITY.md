@@ -10,6 +10,7 @@ Hermes Agent should make local agent work inspectable and user-controlled. The a
 - Never print secrets to logs.
 - Never include secrets in crash reports, run logs, prompt exports, or issue templates.
 - Redact credential-like values before rendering runtime diagnostics.
+- Provider adapters must receive secrets through explicit configuration paths and must never include secret values in runtime events. Provider request logs must redact authorization headers and API keys.
 
 ## Tool Approval Policy
 
@@ -58,4 +59,3 @@ Runtime logs should be structured and redacted. Logs should include enough infor
 ## Vulnerability Reporting
 
 Before public release, the project should define a private vulnerability reporting channel in this document. Until then, security issues should not be reported with secrets or exploit details in public GitHub issues.
-
