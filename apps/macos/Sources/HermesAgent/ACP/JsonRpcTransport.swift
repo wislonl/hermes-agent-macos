@@ -43,9 +43,7 @@ actor JsonRpcTransport {
     private var pending: [JsonRpcId: CheckedContinuation<Data, Error>] = [:]
     private var notificationHandler: NotificationHandler?
     private var requestHandler: RequestHandler?
-
-    private var readerThread: DispatchWorkItem?
-    private var stderrThread: DispatchWorkItem?
+    private var readBuffer = Data()
     private var isRunning = false
 
     init(executableURL: URL, arguments: [String], extraEnvironment: [String: String] = [:]) {
@@ -83,47 +81,38 @@ actor JsonRpcTransport {
         isRunning = true
 
         let stdoutHandle = stdoutPipe.fileHandleForReading
-        let weakSelf = WeakActorBox(self)
-        let readerWork = DispatchWorkItem {
-            var buffer = Data()
-            while !Thread.current.isCancelled {
-                let chunk: Data
-                do {
-                    guard let next = try stdoutHandle.read(upToCount: 4096), !next.isEmpty else { break }
-                    chunk = next
-                } catch {
-                    break
-                }
-                buffer.append(chunk)
-                while let nl = buffer.firstIndex(of: 0x0A) {
-                    let lineData = buffer.subdata(in: 0..<nl)
-                    buffer.removeSubrange(0...nl)
-                    if lineData.isEmpty { continue }
-                    Task { await weakSelf.value?.dispatchLine(lineData) }
-                }
-            }
-            Task { await weakSelf.value?.handleReaderEnded() }
-        }
-        readerThread = readerWork
-        DispatchQueue.global(qos: .utility).async(execute: readerWork)
-
         let stderrHandle = stderrPipe.fileHandleForReading
-        let stderrWork = DispatchWorkItem {
-            while let chunk = try? stderrHandle.read(upToCount: 4096), !chunk.isEmpty {
-                _ = chunk
+        let weakSelf = WeakActorBox(self)
+
+        // readabilityHandler is called by Foundation on its own queue whenever
+        // data arrives — no blocking reads, no cooperative-pool starvation.
+        stdoutHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+                Task { await weakSelf.value?.handleReaderEnded() }
+                return
+            }
+            Task { await weakSelf.value?.processIncoming(data) }
+        }
+
+        stderrHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty {
+                handle.readabilityHandler = nil
+                return
+            }
+            if let str = String(data: data, encoding: .utf8) {
+                NSLog("[hermes-acp] %@", str.trimmingCharacters(in: .newlines))
             }
         }
-        stderrThread = stderrWork
-        DispatchQueue.global(qos: .utility).async(execute: stderrWork)
     }
 
     func stop() {
         guard isRunning else { return }
         isRunning = false
-        readerThread?.cancel()
-        stderrThread?.cancel()
-        readerThread = nil
-        stderrThread = nil
+        stdoutPipe.fileHandleForReading.readabilityHandler = nil
+        stderrPipe.fileHandleForReading.readabilityHandler = nil
         process.terminate()
         let toFail = pending
         pending.removeAll()
@@ -171,6 +160,23 @@ actor JsonRpcTransport {
 
     // MARK: - Internals
 
+    // Called from a Foundation-managed queue via Task; actor serialises access.
+    fileprivate func processIncoming(_ data: Data) {
+        readBuffer.append(data)
+        while let nl = readBuffer.firstIndex(of: 0x0A) {
+            let lineData = readBuffer.subdata(in: 0..<nl)
+            readBuffer.removeSubrange(0...nl)
+            if !lineData.isEmpty { handleLine(lineData) }
+        }
+    }
+
+    fileprivate func handleReaderEnded() {
+        let toFail = pending
+        pending.removeAll()
+        for (_, cont) in toFail { cont.resume(throwing: JsonRpcTransportError.processNotRunning) }
+        isRunning = false
+    }
+
     private func sendRawRequest<Params: Encodable>(method: String, params: Params) async throws -> Data {
         guard isRunning, process.isRunning else {
             throw JsonRpcTransportError.processNotRunning
@@ -211,17 +217,6 @@ actor JsonRpcTransport {
         } catch {
             throw JsonRpcTransportError.writeFailed
         }
-    }
-
-    fileprivate func dispatchLine(_ data: Data) {
-        handleLine(data)
-    }
-
-    fileprivate func handleReaderEnded() {
-        let toFail = pending
-        pending.removeAll()
-        for (_, cont) in toFail { cont.resume(throwing: JsonRpcTransportError.processNotRunning) }
-        isRunning = false
     }
 
     private func handleLine(_ data: Data) {
