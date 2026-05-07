@@ -31,6 +31,8 @@ final class AppState: NSObject {
     @ObservationIgnored private var pendingPermission: ACPPermissionRequest?
     @ObservationIgnored private let executableURL: URL?
     @ObservationIgnored private var didStart = false
+    @ObservationIgnored private var messageCache: [String: [ChatMessage]] = [:]
+    @ObservationIgnored private var toolCallCache: [String: [ToolCallView]] = [:]
 
     init(workspacePath: String = AppState.defaultWorkspacePath,
          executableURL: URL? = HermesLocator.findExecutable()) {
@@ -96,14 +98,14 @@ final class AppState: NSObject {
 
     func startNewSession() async {
         guard let client else { return }
+        saveCurrentSessionToCache()
         do {
             let result = try await client.newSession(cwd: workspacePath)
             self.currentSessionId = result.sessionId
-            self.messages.removeAll()
-            self.toolCalls.removeAll()
+            self.messages = []
+            self.toolCalls = []
             self.applyModelState(result.models)
             self.availableSlashCommands.removeAll()
-            self.appendSystem("New session started.")
             await refreshSessions()
         } catch {
             appendSystem("Could not create session: \(error.localizedDescription)")
@@ -111,18 +113,27 @@ final class AppState: NSObject {
     }
 
     func switchToSession(_ sessionId: String, cwd: String) async {
-        guard let client else { return }
+        guard let client, sessionId != currentSessionId else { return }
+        saveCurrentSessionToCache()
         do {
             let result = try await client.loadSession(sessionId: sessionId, cwd: cwd)
             self.currentSessionId = sessionId
             self.workspacePath = cwd
-            self.messages.removeAll()
-            self.toolCalls.removeAll()
+            self.messages = messageCache[sessionId] ?? []
+            self.toolCalls = toolCallCache[sessionId] ?? []
             self.applyModelState(result.models)
-            self.appendSystem("Loaded session \(sessionId.prefix(8))")
+            if messageCache[sessionId] == nil {
+                self.appendSystem("Session loaded — previous messages not shown (app was restarted).")
+            }
         } catch {
             appendSystem("Could not load session: \(error.localizedDescription)")
         }
+    }
+
+    private func saveCurrentSessionToCache() {
+        guard let id = currentSessionId else { return }
+        messageCache[id] = messages
+        toolCallCache[id] = toolCalls
     }
 
     func setModel(_ modelId: String) async {
