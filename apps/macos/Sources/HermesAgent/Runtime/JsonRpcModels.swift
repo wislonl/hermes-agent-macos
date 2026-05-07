@@ -1,5 +1,39 @@
 import Foundation
 
+private struct AnyCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        intValue = nil
+    }
+
+    init?(intValue: Int) {
+        stringValue = String(intValue)
+        self.intValue = intValue
+    }
+}
+
+private func validateNoUnknownKeys<Key: CodingKey & CaseIterable>(
+    in decoder: Decoder,
+    allowedBy _: Key.Type,
+    debugDescription: String
+) throws {
+    let rawContainer = try decoder.container(keyedBy: AnyCodingKey.self)
+    let allowedKeys = Set(Key.allCases.map(\.stringValue))
+    let unknownKeys = rawContainer.allKeys.filter { !allowedKeys.contains($0.stringValue) }
+
+    guard unknownKeys.isEmpty else {
+        throw DecodingError.dataCorrupted(
+            DecodingError.Context(
+                codingPath: decoder.codingPath,
+                debugDescription: debugDescription
+            )
+        )
+    }
+}
+
 enum JsonRpcID: Codable, Equatable, ExpressibleByStringLiteral, ExpressibleByIntegerLiteral {
     case string(String)
     case integer(Int)
@@ -98,34 +132,12 @@ struct JsonRpcResponse<Result: Decodable>: Decodable {
         case error
     }
 
-    private struct AnyCodingKey: CodingKey {
-        let stringValue: String
-        let intValue: Int?
-
-        init?(stringValue: String) {
-            self.stringValue = stringValue
-            intValue = nil
-        }
-
-        init?(intValue: Int) {
-            stringValue = String(intValue)
-            self.intValue = intValue
-        }
-    }
-
     init(from decoder: Decoder) throws {
-        let rawContainer = try decoder.container(keyedBy: AnyCodingKey.self)
-        let allowedKeys = Set(CodingKeys.allCases.map(\.stringValue))
-        let unknownKeys = rawContainer.allKeys.filter { !allowedKeys.contains($0.stringValue) }
-
-        guard unknownKeys.isEmpty else {
-            throw DecodingError.dataCorrupted(
-                DecodingError.Context(
-                    codingPath: decoder.codingPath,
-                    debugDescription: "JSON-RPC response contains unknown top-level keys."
-                )
-            )
-        }
+        try validateNoUnknownKeys(
+            in: decoder,
+            allowedBy: CodingKeys.self,
+            debugDescription: "JSON-RPC response contains unknown top-level keys."
+        )
 
         let container = try decoder.container(keyedBy: CodingKeys.self)
         jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
@@ -173,6 +185,31 @@ struct JsonRpcError: Decodable, Equatable {
     let code: Int
     let message: String
     let data: [String: JSONValue]?
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case code
+        case message
+        case data
+    }
+
+    init(code: Int, message: String, data: [String: JSONValue]?) {
+        self.code = code
+        self.message = message
+        self.data = data
+    }
+
+    init(from decoder: Decoder) throws {
+        try validateNoUnknownKeys(
+            in: decoder,
+            allowedBy: CodingKeys.self,
+            debugDescription: "JSON-RPC error contains unknown keys."
+        )
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        code = try container.decode(Int.self, forKey: .code)
+        message = try container.decode(String.self, forKey: .message)
+        data = try container.decodeIfPresent([String: JSONValue].self, forKey: .data)
+    }
 }
 
 struct RuntimeHandshakeParams: Encodable {
@@ -189,11 +226,58 @@ struct RuntimeHandshakeResult: Decodable, Equatable {
     let protocolVersion: String
     let runtime: RuntimeInfo
     let capabilities: [String]
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case protocolVersion
+        case runtime
+        case capabilities
+    }
+
+    init(protocolVersion: String, runtime: RuntimeInfo, capabilities: [String]) {
+        self.protocolVersion = protocolVersion
+        self.runtime = runtime
+        self.capabilities = capabilities
+    }
+
+    init(from decoder: Decoder) throws {
+        try validateNoUnknownKeys(
+            in: decoder,
+            allowedBy: CodingKeys.self,
+            debugDescription: "runtime.handshake result contains unknown keys."
+        )
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        protocolVersion = try container.decode(String.self, forKey: .protocolVersion)
+        runtime = try container.decode(RuntimeInfo.self, forKey: .runtime)
+        capabilities = try container.decode([String].self, forKey: .capabilities)
+    }
 }
 
 struct RuntimeInfo: Decodable, Equatable {
     let name: String
     let version: String
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case name
+        case version
+    }
+
+    init(name: String, version: String) {
+        self.name = name
+        self.version = version
+    }
+
+    init(from decoder: Decoder) throws {
+        try validateNoUnknownKeys(
+            in: decoder,
+            allowedBy: CodingKeys.self,
+            debugDescription: "runtime info contains unknown keys."
+        )
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        version = try container.decode(String.self, forKey: .version)
+    }
 }
 
 struct RunCreateParams: Encodable {
@@ -216,7 +300,7 @@ struct RunCreateResult: Decodable, Equatable {
     let runId: String
     let status: String
 
-    private enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey, CaseIterable {
         case runId
         case status
     }
@@ -227,6 +311,12 @@ struct RunCreateResult: Decodable, Equatable {
     }
 
     init(from decoder: Decoder) throws {
+        try validateNoUnknownKeys(
+            in: decoder,
+            allowedBy: CodingKeys.self,
+            debugDescription: "run.create result contains unknown keys."
+        )
+
         let container = try decoder.container(keyedBy: CodingKeys.self)
         runId = try container.decode(String.self, forKey: .runId)
         status = try container.decode(String.self, forKey: .status)

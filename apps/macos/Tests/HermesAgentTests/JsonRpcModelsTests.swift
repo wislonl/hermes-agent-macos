@@ -59,6 +59,26 @@ final class JsonRpcModelsTests: XCTestCase {
         )
     }
 
+    func testHandshakeResultWithExtraFieldFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeHandshakeResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_1","result":{"protocolVersion":"0.1.0","runtime":{"name":"hermes-runtime","version":"0.1.0"},"capabilities":["run.create"],"extra":true}}
+                """
+            )
+        )
+    }
+
+    func testHandshakeRuntimeWithExtraFieldFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeHandshakeResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_1","result":{"protocolVersion":"0.1.0","runtime":{"name":"hermes-runtime","version":"0.1.0","extra":true},"capabilities":["run.create"]}}
+                """
+            )
+        )
+    }
+
     func testErrorResponseDecodesNullID() throws {
         let response = try decodeRunCreateResponse(
             """
@@ -146,7 +166,31 @@ final class JsonRpcModelsTests: XCTestCase {
         )
     }
 
+    func testRunCreateResultWithExtraFieldFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_2","result":{"runId":"run_123","status":"running","extra":true}}
+                """
+            )
+        )
+    }
+
+    func testJsonRpcErrorWithExtraFieldFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":null,"error":{"code":-32700,"message":"Parse error","extra":true}}
+                """
+            )
+        )
+    }
+
     private func decodeRunCreateResponse(_ json: String) throws -> JsonRpcResponse<RunCreateResult> {
         try JSONDecoder().decode(JsonRpcResponse<RunCreateResult>.self, from: Data(json.utf8))
+    }
+
+    private func decodeHandshakeResponse(_ json: String) throws -> JsonRpcResponse<RuntimeHandshakeResult> {
+        try JSONDecoder().decode(JsonRpcResponse<RuntimeHandshakeResult>.self, from: Data(json.utf8))
     }
 }
