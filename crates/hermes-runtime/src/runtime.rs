@@ -33,8 +33,7 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                 delta: format!("Hermes received: {}", prompt),
             }];
 
-            let trimmed = prompt.trim();
-            if trimmed == "/shell" || trimmed.starts_with("/shell ") {
+            if is_shell_command_prompt(prompt) {
                 let tool_call_id = format!("tool_shell_preview_{}", run_id);
                 let approval_id = format!("approval_shell_preview_{}", run_id);
                 events.push(RuntimeEvent::ToolRequested {
@@ -72,4 +71,17 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
             message: format!("Unknown method: {}", method),
         }),
     }
+}
+
+fn is_shell_command_prompt(prompt: &str) -> bool {
+    let trimmed = prompt.trim();
+
+    if trimmed == "/shell" {
+        return true;
+    }
+
+    trimmed
+        .strip_prefix("/shell")
+        .and_then(|remaining| remaining.chars().next())
+        .is_some_and(char::is_whitespace)
 }

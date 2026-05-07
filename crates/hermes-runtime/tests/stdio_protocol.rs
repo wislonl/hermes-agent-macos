@@ -169,6 +169,30 @@ fn run_create_with_leading_whitespace_shell_command_requests_approval() {
 }
 
 #[test]
+fn run_create_with_tab_after_shell_command_requests_approval() {
+    let output = run_create_prompt("req_tab_shell", "/shell\tpwd");
+
+    assert_eq!(output.len(), 4);
+    assert_eq!(output[2]["event"], "tool.requested");
+    assert_eq!(output[3]["event"], "approval.required");
+    assert!(!output
+        .iter()
+        .any(|message| message["event"] == "run.completed"));
+}
+
+#[test]
+fn run_create_with_newline_after_shell_command_requests_approval() {
+    let output = run_create_prompt("req_newline_shell", "/shell\npwd");
+
+    assert_eq!(output.len(), 4);
+    assert_eq!(output[2]["event"], "tool.requested");
+    assert_eq!(output[3]["event"], "approval.required");
+    assert!(!output
+        .iter()
+        .any(|message| message["event"] == "run.completed"));
+}
+
+#[test]
 fn run_create_with_shell_mentioned_later_does_not_request_approval() {
     let output = run_create_prompt("req_shell_text", "Explain why /shell needs approval.");
 
