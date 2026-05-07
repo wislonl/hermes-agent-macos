@@ -108,6 +108,19 @@ negative_cases = {
             }
         }
     },
+    "request with extra top-level field": {
+        "jsonrpc": "2.0",
+        "id": "extra_top",
+        "method": "runtime.handshake",
+        "params": {
+            "protocolVersion": "0.1.0",
+            "client": {
+                "name": "Hermes.app",
+                "version": "0.1.0"
+            }
+        },
+        "extra": True
+    },
     "malformed approval.required": {
         "event": "approval.required",
         "runId": "run_123",

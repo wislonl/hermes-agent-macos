@@ -169,6 +169,25 @@ fn invalid_envelope_shape_returns_invalid_request() {
 }
 
 #[test]
+fn extra_top_level_request_fields_return_invalid_request() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"extra_top","method":"runtime.handshake","params":{"protocolVersion":"0.1.0","client":{"name":"Hermes.app","version":"0.1.0"}},"extra":true}"#,
+    );
+
+    assert_eq!(
+        output,
+        vec![json!({
+            "jsonrpc": "2.0",
+            "id": "extra_top",
+            "error": {
+                "code": -32600,
+                "message": "Invalid request"
+            }
+        })]
+    );
+}
+
+#[test]
 fn unknown_method_returns_method_not_found() {
     let output = run_runtime(r#"{"jsonrpc":"2.0","id":42,"method":"runtime.unknown","params":{}}"#);
 

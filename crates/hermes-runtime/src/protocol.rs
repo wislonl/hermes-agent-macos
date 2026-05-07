@@ -52,6 +52,10 @@ pub fn validate_request(value: Value) -> Result<JsonRpcRequest, JsonRpcErrorResp
         return Err(invalid_request(response_id));
     };
 
+    if !has_exact_fields(request, &["jsonrpc", "id", "method", "params"]) {
+        return Err(invalid_request(response_id));
+    }
+
     if request.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
         return Err(invalid_request(response_id));
     }
