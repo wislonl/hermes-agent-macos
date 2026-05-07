@@ -17,7 +17,6 @@ struct InspectorView: View {
         }
         .padding()
         .frame(minWidth: 240)
-        .navigationTitle("Inspector")
     }
 
     @ViewBuilder
@@ -96,6 +95,7 @@ struct InspectorView: View {
                     .padding(.vertical, 4)
                 }
                 .listStyle(.plain)
+                .frame(maxHeight: 320)
             }
         }
     }

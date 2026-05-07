@@ -70,35 +70,39 @@ struct ConversationView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Group {
-                if message.author == .agent {
-                    if message.text.isEmpty {
-                        Text("…").foregroundStyle(.secondary)
-                    } else {
-                        MarkdownContent(text: message.text)
-                    }
-                } else {
-                    Text(message.text)
-                        .textSelection(.enabled)
-                }
-            }
-            .padding(10)
-            .background(background(for: message.author))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            messageBubble(message)
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
     }
 
+    // Separate @ViewBuilder so each branch returns a concrete typed view,
+    // avoiding the Group+VStack height-calculation bug in LazyVStack.
+    @ViewBuilder
+    private func messageBubble(_ message: ChatMessage) -> some View {
+        if message.author == .agent {
+            MarkdownContent(text: message.text.isEmpty ? "…" : message.text)
+                .padding(10)
+                .background(background(for: .agent))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else {
+            Text(message.text)
+                .textSelection(.enabled)
+                .padding(10)
+                .background(background(for: message.author))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
     private func background(for author: ChatMessage.Author) -> Color {
         switch author {
-        case .user: return Color.accentColor.opacity(0.12)
-        case .agent: return Color.secondary.opacity(0.10)
+        case .user:   return Color.accentColor.opacity(0.12)
+        case .agent:  return Color.secondary.opacity(0.10)
         case .system: return Color.orange.opacity(0.10)
         }
     }
 }
 
-// MARK: - Markdown renderer (no third-party dependency)
+// MARK: - Markdown renderer
 
 private struct MarkdownContent: View {
     let text: String
@@ -108,17 +112,22 @@ private struct MarkdownContent: View {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
                 switch segment {
                 case .prose(let content):
+                    // AttributedString handles bold, italic, inline-code, links.
                     if let attr = try? AttributedString(
                         markdown: content,
                         options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
                     ) {
                         Text(attr)
                             .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text(content)
                             .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+
                 case .code(let lang, let content):
+                    // No ScrollView here — ScrollView inside LazyVStack collapses to 0 height.
                     VStack(alignment: .leading, spacing: 0) {
                         if let lang, !lang.isEmpty {
                             Text(lang)
@@ -127,14 +136,12 @@ private struct MarkdownContent: View {
                                 .padding(.horizontal, 8)
                                 .padding(.top, 6)
                         }
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            Text(content)
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 6)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+                        Text(content)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .background(Color(.textBackgroundColor).opacity(0.6))
                     .overlay(
@@ -145,6 +152,7 @@ private struct MarkdownContent: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private enum Segment {
@@ -181,15 +189,15 @@ private struct MarkdownContent: View {
         if !remaining.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             result.append(.prose(remaining.trimmingCharacters(in: .newlines)))
         }
-        return result
+        return result.isEmpty ? [.prose(text)] : result
     }
 }
 
 private extension ChatMessage.Author {
     var displayName: String {
         switch self {
-        case .user: "You"
-        case .agent: "Hermes"
+        case .user:   "You"
+        case .agent:  "Hermes"
         case .system: "System"
         }
     }
