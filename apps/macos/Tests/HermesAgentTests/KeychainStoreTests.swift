@@ -5,6 +5,7 @@ final class KeychainStoreTests: XCTestCase {
     func testKeychainRoundTrip() throws {
         let store = KeychainStore()
         let account = "test-\(UUID().uuidString)"
+        defer { try? store.deleteSecret(account: account) }
 
         try store.setSecret("sk-test-value", account: account)
         XCTAssertEqual(try store.getSecret(account: account), "sk-test-value")
@@ -23,6 +24,7 @@ final class KeychainStoreTests: XCTestCase {
     func testSetSecretReplacesExistingValue() throws {
         let store = KeychainStore()
         let account = "replace-\(UUID().uuidString)"
+        defer { try? store.deleteSecret(account: account) }
 
         try store.setSecret("first", account: account)
         try store.setSecret("second", account: account)
