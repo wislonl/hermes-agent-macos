@@ -20,8 +20,22 @@ struct InspectorView: View {
                             Text(call.title).font(.headline)
                             Text(call.detail).font(.caption).foregroundStyle(.secondary)
                             if call.requiresApproval {
-                                Label("Approval required", systemImage: "lock")
-                                    .foregroundStyle(.orange)
+                                let approval = state.approvals.first { $0.id == call.id }
+                                let decision = approval?.decision
+
+                                Label(statusText(for: decision), systemImage: "lock")
+                                    .foregroundStyle(statusColor(for: decision))
+
+                                if decision == nil {
+                                    HStack(spacing: 8) {
+                                        Button("Approve") {
+                                            state.resolveApproval(id: call.id, decision: .approved)
+                                        }
+                                        Button("Deny", role: .destructive) {
+                                            state.resolveApproval(id: call.id, decision: .denied)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -31,5 +45,27 @@ struct InspectorView: View {
         }
         .padding()
         .frame(minWidth: 280)
+    }
+
+    private func statusText(for decision: ApprovalDecision?) -> String {
+        switch decision {
+        case .approved:
+            "Approved"
+        case .denied:
+            "Denied"
+        case nil:
+            "Pending"
+        }
+    }
+
+    private func statusColor(for decision: ApprovalDecision?) -> Color {
+        switch decision {
+        case .approved:
+            .green
+        case .denied:
+            .red
+        case nil:
+            .orange
+        }
     }
 }

@@ -1,6 +1,17 @@
 import Foundation
 import Observation
 
+enum ApprovalDecision: Equatable {
+    case approved
+    case denied
+}
+
+struct ApprovalRequest: Identifiable, Equatable {
+    let id: String
+    let command: String
+    var decision: ApprovalDecision?
+}
+
 @Observable
 final class AppState {
     var agents: [AgentProfile] = [
@@ -13,6 +24,7 @@ final class AppState {
         ChatMessage(id: UUID(), author: .assistant, text: "Hermes is ready.")
     ]
     var toolCalls: [ToolCall] = []
+    var approvals: [ApprovalRequest] = []
     var draft = ""
 
     func apply(event: RuntimeEvent) {
@@ -22,10 +34,16 @@ final class AppState {
         case .toolRequested(_, let toolCallId, let tool, let summary):
             toolCalls.append(ToolCall(id: toolCallId, title: tool, detail: summary, requiresApproval: false))
         case .approvalRequired(_, let approvalId, _, let command):
+            approvals.append(ApprovalRequest(id: approvalId, command: command, decision: nil))
             toolCalls.append(ToolCall(id: approvalId, title: "Approval required", detail: command, requiresApproval: true))
         case .runCompleted:
             break
         }
+    }
+
+    func resolveApproval(id: String, decision: ApprovalDecision) {
+        guard let index = approvals.firstIndex(where: { $0.id == id }) else { return }
+        approvals[index].decision = decision
     }
 
     func submitDraft() {
