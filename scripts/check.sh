@@ -82,6 +82,18 @@ errors = list(validator.iter_errors(error_response))
 if errors:
     raise SystemExit(f"JSON-RPC error response should validate: {errors[0].message}")
 
+null_id_error_response = {
+    "jsonrpc": "2.0",
+    "id": None,
+    "error": {
+        "code": -32700,
+        "message": "Parse error"
+    }
+}
+errors = list(validator.iter_errors(null_id_error_response))
+if errors:
+    raise SystemExit(f"JSON-RPC null-id error response should validate: {errors[0].message}")
+
 negative_cases = {
     "malformed run.create": {
         "jsonrpc": "2.0",
@@ -196,6 +208,18 @@ negative_cases = {
         "id": "req_unexpected",
         "result": {
             "unexpected": True
+        }
+    },
+    "successful response with null id": {
+        "jsonrpc": "2.0",
+        "id": None,
+        "result": {
+            "protocolVersion": "0.1.0",
+            "runtime": {
+                "name": "hermes-runtime",
+                "version": "0.1.0"
+            },
+            "capabilities": ["runs", "tools", "approvals"]
         }
     }
 }

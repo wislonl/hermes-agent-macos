@@ -103,10 +103,22 @@ fn is_valid_request_id(id: &Value) -> bool {
 
 fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
     match method {
-        "runtime.handshake" => params
-            .get("protocolVersion")
-            .and_then(Value::as_str)
-            .is_some(),
+        "runtime.handshake" => {
+            params
+                .get("protocolVersion")
+                .and_then(Value::as_str)
+                .is_some()
+                && params
+                    .get("client")
+                    .and_then(|client| client.get("name"))
+                    .and_then(Value::as_str)
+                    .is_some()
+                && params
+                    .get("client")
+                    .and_then(|client| client.get("version"))
+                    .and_then(Value::as_str)
+                    .is_some()
+        }
         "run.create" => {
             params.get("sessionId").and_then(Value::as_str).is_some()
                 && params

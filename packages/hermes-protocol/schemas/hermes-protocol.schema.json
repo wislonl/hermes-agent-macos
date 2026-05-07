@@ -35,10 +35,21 @@
       ]
     },
     "jsonRpcResponse": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/jsonRpcSuccessResponse"
+        },
+        {
+          "$ref": "#/$defs/jsonRpcErrorResponse"
+        }
+      ]
+    },
+    "jsonRpcSuccessResponse": {
       "type": "object",
       "required": [
         "jsonrpc",
-        "id"
+        "id",
+        "result"
       ],
       "properties": {
         "jsonrpc": {
@@ -52,23 +63,32 @@
         },
         "result": {
           "$ref": "#/$defs/jsonRpcResult"
+        }
+      },
+      "additionalProperties": false
+    },
+    "jsonRpcErrorResponse": {
+      "type": "object",
+      "required": [
+        "jsonrpc",
+        "id",
+        "error"
+      ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "type": [
+            "string",
+            "integer",
+            "null"
+          ]
         },
         "error": {
           "$ref": "#/$defs/jsonRpcError"
         }
       },
-      "oneOf": [
-        {
-          "required": [
-            "result"
-          ]
-        },
-        {
-          "required": [
-            "error"
-          ]
-        }
-      ],
       "additionalProperties": false
     },
     "jsonRpcResult": {
