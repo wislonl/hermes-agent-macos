@@ -83,11 +83,29 @@ actor JsonRpcTransport {
         isRunning = true
 
         let stdoutHandle = stdoutPipe.fileHandleForReading
-        readerTask = Task { [weak self] in
-            await self?.runReader(handle: stdoutHandle)
+        let weakSelf = WeakActorBox(self)
+        readerTask = Task.detached(priority: .utility) {
+            var buffer = Data()
+            while !Task.isCancelled {
+                let chunk: Data
+                do {
+                    guard let next = try stdoutHandle.read(upToCount: 4096), !next.isEmpty else { break }
+                    chunk = next
+                } catch {
+                    break
+                }
+                buffer.append(chunk)
+                while let nl = buffer.firstIndex(of: 0x0A) {
+                    let lineData = buffer.subdata(in: 0..<nl)
+                    buffer.removeSubrange(0...nl)
+                    if lineData.isEmpty { continue }
+                    await weakSelf.value?.dispatchLine(lineData)
+                }
+            }
+            await weakSelf.value?.handleReaderEnded()
         }
         let stderrHandle = stderrPipe.fileHandleForReading
-        stderrTask = Task.detached {
+        stderrTask = Task.detached(priority: .utility) {
             while let chunk = try? stderrHandle.read(upToCount: 4096), !chunk.isEmpty {
                 _ = chunk
             }
@@ -190,24 +208,11 @@ actor JsonRpcTransport {
         }
     }
 
-    private func runReader(handle: FileHandle) async {
-        var buffer = Data()
-        while !Task.isCancelled {
-            let chunk: Data
-            do {
-                guard let next = try handle.read(upToCount: 4096), !next.isEmpty else { break }
-                chunk = next
-            } catch {
-                break
-            }
-            buffer.append(chunk)
-            while let nl = buffer.firstIndex(of: 0x0A) {
-                let lineData = buffer.subdata(in: 0..<nl)
-                buffer.removeSubrange(0...nl)
-                if lineData.isEmpty { continue }
-                handleLine(lineData)
-            }
-        }
+    fileprivate func dispatchLine(_ data: Data) {
+        handleLine(data)
+    }
+
+    fileprivate func handleReaderEnded() {
         let toFail = pending
         pending.removeAll()
         for (_, cont) in toFail { cont.resume(throwing: JsonRpcTransportError.processNotRunning) }
@@ -290,6 +295,11 @@ private struct OutgoingErrorResponse: Encodable {
 private struct ErrorBody: Encodable {
     let code: Int
     let message: String
+}
+
+private final class WeakActorBox<T: AnyObject>: @unchecked Sendable {
+    weak var value: T?
+    init(_ value: T) { self.value = value }
 }
 
 private struct AnyJsonValue: Encodable {
