@@ -138,7 +138,7 @@ Response result:
     "tool": "shell",
     "command": "find . -maxdepth 2 -type f",
     "workingDirectory": "/Users/example/project",
-    "risk": "read-only"
+    "risk": "executes-command"
   }
 }
 ```
