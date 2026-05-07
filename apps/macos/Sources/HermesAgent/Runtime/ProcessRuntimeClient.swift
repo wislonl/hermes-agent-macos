@@ -2,6 +2,7 @@ import Foundation
 
 final class ProcessRuntimeClient: RuntimeClient {
     private let runtimeURL: URL
+    private(set) var lastEncodedRequestData: Data?
 
     init(runtimeURL: URL) {
         self.runtimeURL = runtimeURL
@@ -16,7 +17,7 @@ final class ProcessRuntimeClient: RuntimeClient {
                 client: RuntimeClientInfo(name: "Hermes.app", version: "0.1.0")
             )
         )
-        _ = try JSONEncoder().encode(request)
+        lastEncodedRequestData = try JSONEncoder().encode(request)
 
         return RuntimeHandshakeResult(
             protocolVersion: "0.1.0",
@@ -25,8 +26,24 @@ final class ProcessRuntimeClient: RuntimeClient {
         )
     }
 
-    func createRun(input: String, workspacePath: String?) async throws {
-        _ = input
-        _ = workspacePath
+    func createRun(
+        sessionId: String,
+        agentProfileId: String,
+        input: String,
+        workspacePath: String
+    ) async throws -> RunCreateResult {
+        let request = JsonRpcRequest(
+            id: "req_create_run",
+            method: "run.create",
+            params: RunCreateParams(
+                sessionId: sessionId,
+                agentProfileId: agentProfileId,
+                input: RunInput(type: "text", text: input),
+                workspace: Workspace(path: workspacePath)
+            )
+        )
+        lastEncodedRequestData = try JSONEncoder().encode(request)
+
+        return RunCreateResult(runId: "run_mock", status: "running")
     }
 }

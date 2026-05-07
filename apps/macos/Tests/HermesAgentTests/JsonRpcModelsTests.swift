@@ -26,4 +26,72 @@ final class JsonRpcModelsTests: XCTestCase {
         XCTAssertEqual(client["name"] as? String, "Hermes.app")
         XCTAssertEqual(client["version"] as? String, "0.1.0")
     }
+
+    func testSuccessResponseDecodesStringID() throws {
+        let response = try decodeRunCreateResponse(
+            """
+            {"jsonrpc":"2.0","id":"req_2","result":{"runId":"run_123","status":"running"}}
+            """
+        )
+
+        XCTAssertEqual(response.id, .string("req_2"))
+        XCTAssertEqual(response.result, RunCreateResult(runId: "run_123", status: "running"))
+        XCTAssertNil(response.error)
+    }
+
+    func testErrorResponseDecodesNullID() throws {
+        let response = try decodeRunCreateResponse(
+            """
+            {"jsonrpc":"2.0","id":null,"error":{"code":-32700,"message":"Parse error"}}
+            """
+        )
+
+        XCTAssertEqual(response.id, .null)
+        XCTAssertNil(response.result)
+        XCTAssertEqual(response.error, JsonRpcError(code: -32700, message: "Parse error", data: nil))
+    }
+
+    func testResponseDecodesIntegerID() throws {
+        let response = try decodeRunCreateResponse(
+            """
+            {"jsonrpc":"2.0","id":42,"result":{"runId":"run_123","status":"running"}}
+            """
+        )
+
+        XCTAssertEqual(response.id, .integer(42))
+    }
+
+    func testResponseMissingIDFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","result":{"runId":"run_123","status":"running"}}
+                """
+            )
+        )
+    }
+
+    func testResponseWithBothResultAndErrorFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":"req_2","result":{"runId":"run_123","status":"running"},"error":{"code":-32603,"message":"Internal error"}}
+                """
+            )
+        )
+    }
+
+    func testSuccessResponseWithNullIDFailsDecoding() {
+        XCTAssertThrowsError(
+            try decodeRunCreateResponse(
+                """
+                {"jsonrpc":"2.0","id":null,"result":{"runId":"run_123","status":"running"}}
+                """
+            )
+        )
+    }
+
+    private func decodeRunCreateResponse(_ json: String) throws -> JsonRpcResponse<RunCreateResult> {
+        try JSONDecoder().decode(JsonRpcResponse<RunCreateResult>.self, from: Data(json.utf8))
+    }
 }

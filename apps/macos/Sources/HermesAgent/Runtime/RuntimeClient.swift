@@ -2,5 +2,10 @@ import Foundation
 
 protocol RuntimeClient {
     func handshake() async throws -> RuntimeHandshakeResult
-    func createRun(input: String, workspacePath: String?) async throws
+    func createRun(
+        sessionId: String,
+        agentProfileId: String,
+        input: String,
+        workspacePath: String
+    ) async throws -> RunCreateResult
 }

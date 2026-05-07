@@ -62,9 +62,50 @@ struct JsonRpcRequest<Params: Encodable>: Encodable {
 
 struct JsonRpcResponse<Result: Decodable>: Decodable {
     let jsonrpc: String
-    let id: JsonRpcID?
+    let id: JsonRpcID
     let result: Result?
     let error: JsonRpcError?
+
+    private enum CodingKeys: String, CodingKey {
+        case jsonrpc
+        case id
+        case result
+        case error
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        jsonrpc = try container.decode(String.self, forKey: .jsonrpc)
+        id = try container.decode(JsonRpcID.self, forKey: .id)
+
+        let hasResult = container.contains(.result)
+        let hasError = container.contains(.error)
+
+        guard hasResult != hasError else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "JSON-RPC response must contain exactly one of result or error."
+                )
+            )
+        }
+
+        if hasResult {
+            guard id != .null else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .id,
+                    in: container,
+                    debugDescription: "Successful JSON-RPC responses must not use a null id."
+                )
+            }
+
+            result = try container.decode(Result.self, forKey: .result)
+            error = nil
+        } else {
+            result = nil
+            error = try container.decode(JsonRpcError.self, forKey: .error)
+        }
+    }
 }
 
 struct JsonRpcError: Decodable, Equatable {
@@ -92,6 +133,27 @@ struct RuntimeHandshakeResult: Decodable, Equatable {
 struct RuntimeInfo: Decodable, Equatable {
     let name: String
     let version: String
+}
+
+struct RunCreateParams: Encodable {
+    let sessionId: String
+    let agentProfileId: String
+    let input: RunInput
+    let workspace: Workspace
+}
+
+struct RunInput: Encodable {
+    let type: String
+    let text: String
+}
+
+struct Workspace: Encodable {
+    let path: String
+}
+
+struct RunCreateResult: Decodable, Equatable {
+    let runId: String
+    let status: String
 }
 
 enum JSONValue: Decodable, Equatable {
