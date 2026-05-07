@@ -9,16 +9,22 @@ use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let stdin = BufReader::new(io::stdin());
-    let mut lines = stdin.lines();
+    let mut stdin = BufReader::new(io::stdin());
+    let mut line = Vec::new();
     let mut stdout = io::stdout();
 
-    while let Some(line) = lines.next_line().await? {
-        if line.trim().is_empty() {
+    loop {
+        line.clear();
+        let bytes_read = stdin.read_until(b'\n', &mut line).await?;
+        if bytes_read == 0 {
+            break;
+        }
+
+        if line.iter().all(u8::is_ascii_whitespace) {
             continue;
         }
 
-        let request_value = match serde_json::from_str::<Value>(&line) {
+        let request_value = match serde_json::from_slice::<Value>(&line) {
             Ok(value) => value,
             Err(_) => {
                 write_json(

@@ -104,10 +104,16 @@ fn is_valid_request_id(id: &Value) -> bool {
 fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
     match method {
         "runtime.handshake" => {
-            params
-                .get("protocolVersion")
-                .and_then(Value::as_str)
-                .is_some()
+            let Some(client) = params.get("client").and_then(Value::as_object) else {
+                return false;
+            };
+
+            has_exact_fields(params, &["protocolVersion", "client"])
+                && params
+                    .get("protocolVersion")
+                    .and_then(Value::as_str)
+                    .is_some()
+                && has_exact_fields(client, &["name", "version"])
                 && params
                     .get("client")
                     .and_then(|client| client.get("name"))
@@ -120,11 +126,22 @@ fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
                     .is_some()
         }
         "run.create" => {
-            params.get("sessionId").and_then(Value::as_str).is_some()
+            let Some(input) = params.get("input").and_then(Value::as_object) else {
+                return false;
+            };
+            let Some(workspace) = params.get("workspace").and_then(Value::as_object) else {
+                return false;
+            };
+
+            has_exact_fields(
+                params,
+                &["sessionId", "agentProfileId", "input", "workspace"],
+            ) && params.get("sessionId").and_then(Value::as_str).is_some()
                 && params
                     .get("agentProfileId")
                     .and_then(Value::as_str)
                     .is_some()
+                && has_exact_fields(input, &["type", "text"])
                 && params
                     .get("input")
                     .and_then(|input| input.get("type"))
@@ -135,6 +152,7 @@ fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
                     .and_then(|input| input.get("text"))
                     .and_then(Value::as_str)
                     .is_some()
+                && has_exact_fields(workspace, &["path"])
                 && params
                     .get("workspace")
                     .and_then(|workspace| workspace.get("path"))
@@ -143,6 +161,10 @@ fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
         }
         _ => true,
     }
+}
+
+fn has_exact_fields(object: &Map<String, Value>, fields: &[&str]) -> bool {
+    object.len() == fields.len() && fields.iter().all(|field| object.contains_key(*field))
 }
 
 #[derive(Debug, Serialize)]

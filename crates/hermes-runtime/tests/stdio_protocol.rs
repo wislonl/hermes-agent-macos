@@ -1,7 +1,7 @@
 use assert_cmd::Command;
 use serde_json::{json, Value};
 
-fn run_runtime(stdin: &str) -> Vec<Value> {
+fn run_runtime_bytes(stdin: impl Into<Vec<u8>>) -> Vec<Value> {
     let mut cmd = Command::cargo_bin("hermes-runtime").unwrap();
     let assert = cmd.write_stdin(stdin).assert().success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
@@ -10,6 +10,10 @@ fn run_runtime(stdin: &str) -> Vec<Value> {
         .lines()
         .map(|line| serde_json::from_str(line).unwrap())
         .collect()
+}
+
+fn run_runtime(stdin: &str) -> Vec<Value> {
+    run_runtime_bytes(stdin)
 }
 
 #[test]
@@ -87,6 +91,31 @@ fn malformed_json_returns_parse_error_and_continues() {
         })
     );
     assert_eq!(output[1]["id"], "req_after_parse_error");
+    assert_eq!(output[1]["result"]["runtime"]["name"], "hermes-runtime");
+}
+
+#[test]
+fn invalid_utf8_returns_parse_error_and_continues() {
+    let mut stdin = vec![0xff, b'\n'];
+    stdin.extend_from_slice(
+        br#"{"jsonrpc":"2.0","id":"req_after_utf8_error","method":"runtime.handshake","params":{"protocolVersion":"0.1.0","client":{"name":"Hermes.app","version":"0.1.0"}}}"#,
+    );
+
+    let output = run_runtime_bytes(stdin);
+
+    assert_eq!(output.len(), 2);
+    assert_eq!(
+        output[0],
+        json!({
+            "jsonrpc": "2.0",
+            "id": null,
+            "error": {
+                "code": -32700,
+                "message": "Parse error"
+            }
+        })
+    );
+    assert_eq!(output[1]["id"], "req_after_utf8_error");
     assert_eq!(output[1]["result"]["runtime"]["name"], "hermes-runtime");
 }
 
@@ -185,6 +214,66 @@ fn invalid_method_params_return_invalid_request() {
                 "message": "Invalid request"
             }
         })
+    );
+}
+
+#[test]
+fn handshake_rejects_extra_params() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"extra_handshake_param","method":"runtime.handshake","params":{"protocolVersion":"0.1.0","client":{"name":"Hermes.app","version":"0.1.0"},"extra":true}}
+{"jsonrpc":"2.0","id":"extra_handshake_client_param","method":"runtime.handshake","params":{"protocolVersion":"0.1.0","client":{"name":"Hermes.app","version":"0.1.0","extra":true}}}"#,
+    );
+
+    assert_eq!(
+        output,
+        vec![
+            json!({
+                "jsonrpc": "2.0",
+                "id": "extra_handshake_param",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid request"
+                }
+            }),
+            json!({
+                "jsonrpc": "2.0",
+                "id": "extra_handshake_client_param",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid request"
+                }
+            })
+        ]
+    );
+}
+
+#[test]
+fn run_create_rejects_extra_nested_params() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"extra_run_input_param","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Summarize this repository.","extra":true},"workspace":{"path":"/Users/example/project"}}}
+{"jsonrpc":"2.0","id":"extra_run_workspace_param","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Summarize this repository."},"workspace":{"path":"/Users/example/project","extra":true}}}"#,
+    );
+
+    assert_eq!(
+        output,
+        vec![
+            json!({
+                "jsonrpc": "2.0",
+                "id": "extra_run_input_param",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid request"
+                }
+            }),
+            json!({
+                "jsonrpc": "2.0",
+                "id": "extra_run_workspace_param",
+                "error": {
+                    "code": -32600,
+                    "message": "Invalid request"
+                }
+            })
+        ]
     );
 }
 
