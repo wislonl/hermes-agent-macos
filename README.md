@@ -1,10 +1,18 @@
 # Hermes Agent for macOS
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-14%2B-brightgreen.svg)](https://www.apple.com/macos/)
+[![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org)
+
 A native macOS chat client for [Hermes Agent](https://hermes-agent.nousresearch.com/) by Nous Research.
 
 ![Hermes Agent for macOS](docs/screenshot.png)
 
-Built with SwiftUI. All agent work — model calls, tool execution, memory, skills, sessions — runs inside `hermes acp`. This app speaks the Agent Client Protocol (ACP) over stdio to that subprocess and renders its events into a native three-pane workbench.
+## Why this app?
+
+Hermes Agent ships as a CLI — powerful, but not something you want to live in all day. This app wraps `hermes acp` in a native three-pane workbench: sessions on the left, chat in the middle, tool inspector on the right. Everything streams in real time. No Electron, no web wrapper — pure SwiftUI.
+
+Built with SwiftUI. All agent work — model calls, tool execution, memory, skills, sessions — runs inside `hermes acp`. This app speaks the Agent Client Protocol (ACP) over stdio to that subprocess and renders its events into a native macOS window.
 
 ## Features
 
