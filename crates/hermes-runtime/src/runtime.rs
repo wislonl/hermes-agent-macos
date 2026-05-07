@@ -33,7 +33,7 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                 delta: format!("Hermes received: {}", prompt),
             }];
 
-            if is_shell_command_prompt(prompt) {
+            if let Some(command) = shell_command_from_prompt(prompt) {
                 let tool_call_id = format!("tool_shell_preview_{}", run_id);
                 let approval_id = format!("approval_shell_preview_{}", run_id);
                 events.push(RuntimeEvent::ToolRequested {
@@ -48,7 +48,7 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                     tool_call_id,
                     operation: ToolOperation {
                         tool: "shell".to_string(),
-                        command: Some("pwd && ls".to_string()),
+                        command: Some(command),
                         working_directory: Some(".".to_string()),
                         path: None,
                         risk: "executes-command".to_string(),
@@ -73,15 +73,22 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
     }
 }
 
-fn is_shell_command_prompt(prompt: &str) -> bool {
+fn shell_command_from_prompt(prompt: &str) -> Option<String> {
     let trimmed = prompt.trim();
 
     if trimmed == "/shell" {
-        return true;
+        return Some("pwd && ls".to_string());
     }
 
-    trimmed
-        .strip_prefix("/shell")
-        .and_then(|remaining| remaining.chars().next())
-        .is_some_and(char::is_whitespace)
+    let remaining = trimmed.strip_prefix("/shell")?;
+    if !remaining.chars().next().is_some_and(char::is_whitespace) {
+        return None;
+    }
+
+    let command = remaining.trim();
+    if command.is_empty() {
+        Some("pwd && ls".to_string())
+    } else {
+        Some(command.to_string())
+    }
 }

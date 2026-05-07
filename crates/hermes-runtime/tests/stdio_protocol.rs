@@ -135,7 +135,7 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
             "toolCallId": tool_call_id,
             "operation": {
                 "tool": "shell",
-                "command": "pwd && ls",
+                "command": "pwd",
                 "workingDirectory": ".",
                 "risk": "executes-command"
             }
@@ -151,12 +151,27 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
 }
 
 #[test]
-fn run_create_with_exact_shell_command_requests_approval() {
+fn run_create_with_shell_remainder_uses_exact_command_in_approval() {
+    let output = run_create_prompt("req_shell_echo", "/shell echo hi");
+
+    assert_eq!(output[3]["operation"]["command"], "echo hi");
+}
+
+#[test]
+fn run_create_with_extra_space_before_shell_remainder_trims_command_in_approval() {
+    let output = run_create_prompt("req_shell_spaced_echo", "/shell   echo hi");
+
+    assert_eq!(output[3]["operation"]["command"], "echo hi");
+}
+
+#[test]
+fn run_create_with_bare_shell_prompt_uses_deterministic_preview_command() {
     let output = run_create_prompt("req_exact_shell", "/shell");
 
     assert_eq!(output.len(), 4);
     assert_eq!(output[2]["event"], "tool.requested");
     assert_eq!(output[3]["event"], "approval.required");
+    assert_eq!(output[3]["operation"]["command"], "pwd && ls");
 }
 
 #[test]
