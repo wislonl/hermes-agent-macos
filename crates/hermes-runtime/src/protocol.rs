@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 #[derive(Debug, Deserialize)]
 pub struct JsonRpcRequest {
@@ -28,6 +28,109 @@ pub struct JsonRpcErrorResponse {
 pub struct JsonRpcError {
     pub code: i64,
     pub message: String,
+}
+
+impl JsonRpcError {
+    pub fn parse_error() -> Self {
+        Self {
+            code: -32700,
+            message: "Parse error".to_string(),
+        }
+    }
+
+    pub fn invalid_request() -> Self {
+        Self {
+            code: -32600,
+            message: "Invalid request".to_string(),
+        }
+    }
+}
+
+pub fn validate_request(value: Value) -> Result<JsonRpcRequest, JsonRpcErrorResponse> {
+    let response_id = valid_response_id(&value);
+    let Some(request) = value.as_object() else {
+        return Err(invalid_request(response_id));
+    };
+
+    if request.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
+        return Err(invalid_request(response_id));
+    }
+
+    if !request.get("id").is_some_and(is_valid_request_id) {
+        return Err(invalid_request(Value::Null));
+    }
+
+    let method = match request.get("method").and_then(Value::as_str) {
+        Some(method) => method,
+        None => return Err(invalid_request(response_id)),
+    };
+
+    let Some(params) = request.get("params").and_then(Value::as_object) else {
+        return Err(invalid_request(response_id));
+    };
+
+    if !has_valid_method_params(method, params) {
+        return Err(invalid_request(response_id));
+    }
+
+    serde_json::from_value(Value::Object(request.clone())).map_err(|_| invalid_request(response_id))
+}
+
+fn invalid_request(id: Value) -> JsonRpcErrorResponse {
+    JsonRpcErrorResponse {
+        jsonrpc: "2.0",
+        id,
+        error: JsonRpcError::invalid_request(),
+    }
+}
+
+fn valid_response_id(value: &Value) -> Value {
+    value
+        .as_object()
+        .and_then(|request| request.get("id"))
+        .filter(|id| is_valid_request_id(id))
+        .cloned()
+        .unwrap_or(Value::Null)
+}
+
+fn is_valid_request_id(id: &Value) -> bool {
+    match id {
+        Value::String(_) => true,
+        Value::Number(number) => number.is_i64() || number.is_u64(),
+        _ => false,
+    }
+}
+
+fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
+    match method {
+        "runtime.handshake" => params
+            .get("protocolVersion")
+            .and_then(Value::as_str)
+            .is_some(),
+        "run.create" => {
+            params.get("sessionId").and_then(Value::as_str).is_some()
+                && params
+                    .get("agentProfileId")
+                    .and_then(Value::as_str)
+                    .is_some()
+                && params
+                    .get("input")
+                    .and_then(|input| input.get("type"))
+                    .and_then(Value::as_str)
+                    == Some("text")
+                && params
+                    .get("input")
+                    .and_then(|input| input.get("text"))
+                    .and_then(Value::as_str)
+                    .is_some()
+                && params
+                    .get("workspace")
+                    .and_then(|workspace| workspace.get("path"))
+                    .and_then(Value::as_str)
+                    .is_some()
+        }
+        _ => true,
+    }
 }
 
 #[derive(Debug, Serialize)]

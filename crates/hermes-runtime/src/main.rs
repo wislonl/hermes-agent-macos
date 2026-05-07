@@ -1,6 +1,10 @@
 use anyhow::Result;
-use hermes_runtime::protocol::{JsonRpcErrorResponse, JsonRpcRequest, JsonRpcResponse};
+use hermes_runtime::protocol::{
+    validate_request, JsonRpcError, JsonRpcErrorResponse, JsonRpcResponse,
+};
 use hermes_runtime::runtime::{self, HandlerOutput};
+use serde::Serialize;
+use serde_json::Value;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 #[tokio::main]
@@ -14,7 +18,29 @@ async fn main() -> Result<()> {
             continue;
         }
 
-        let request: JsonRpcRequest = serde_json::from_str(&line)?;
+        let request_value = match serde_json::from_str::<Value>(&line) {
+            Ok(value) => value,
+            Err(_) => {
+                write_json(
+                    &mut stdout,
+                    &JsonRpcErrorResponse {
+                        jsonrpc: "2.0",
+                        id: Value::Null,
+                        error: JsonRpcError::parse_error(),
+                    },
+                )
+                .await?;
+                continue;
+            }
+        };
+
+        let request = match validate_request(request_value) {
+            Ok(request) => request,
+            Err(response) => {
+                write_json(&mut stdout, &response).await?;
+                continue;
+            }
+        };
         let id = request.id.clone();
 
         match runtime::handle(&request.method, request.params) {
@@ -24,10 +50,7 @@ async fn main() -> Result<()> {
                     id,
                     result,
                 };
-                stdout
-                    .write_all(serde_json::to_string(&response)?.as_bytes())
-                    .await?;
-                stdout.write_all(b"\n").await?;
+                write_json(&mut stdout, &response).await?;
             }
             Ok(HandlerOutput::ResponseWithEvents { response, events }) => {
                 let response = JsonRpcResponse {
@@ -35,15 +58,9 @@ async fn main() -> Result<()> {
                     id,
                     result: response,
                 };
-                stdout
-                    .write_all(serde_json::to_string(&response)?.as_bytes())
-                    .await?;
-                stdout.write_all(b"\n").await?;
+                write_json(&mut stdout, &response).await?;
                 for event in events {
-                    stdout
-                        .write_all(serde_json::to_string(&event)?.as_bytes())
-                        .await?;
-                    stdout.write_all(b"\n").await?;
+                    write_json(&mut stdout, &event).await?;
                 }
             }
             Err(error) => {
@@ -52,13 +69,18 @@ async fn main() -> Result<()> {
                     id,
                     error,
                 };
-                stdout
-                    .write_all(serde_json::to_string(&response)?.as_bytes())
-                    .await?;
-                stdout.write_all(b"\n").await?;
+                write_json(&mut stdout, &response).await?;
             }
         }
     }
 
+    Ok(())
+}
+
+async fn write_json<T: Serialize>(stdout: &mut io::Stdout, value: &T) -> Result<()> {
+    stdout
+        .write_all(serde_json::to_string(value)?.as_bytes())
+        .await?;
+    stdout.write_all(b"\n").await?;
     Ok(())
 }
