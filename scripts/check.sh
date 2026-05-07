@@ -149,6 +149,7 @@ negative_cases = {
             "mode": "overwrite",
             "contentPreview": "# Hermes Agent\n",
             "byteCount": 15,
+            "contentSha256": "d28b70d0f453279afdd8a611d70dfd134fc4734507026b17c98102db0ac7df5d",
             "risk": "read-only"
         }
     },
