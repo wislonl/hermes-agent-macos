@@ -133,6 +133,7 @@ final class AppState: NSObject {
                 ?? loadMessagesFromFile(sessionId: sessionId)
                 ?? []
             self.toolCalls = toolCallCache[sessionId] ?? []
+            self.availableSlashCommands.removeAll()
             self.applyModelState(result.models)
         } catch {
             appendSystem("Could not load session: \(error.localizedDescription)")

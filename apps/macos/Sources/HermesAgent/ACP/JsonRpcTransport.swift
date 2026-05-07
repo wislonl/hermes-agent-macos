@@ -33,6 +33,7 @@ enum JsonRpcId: Hashable {
 actor JsonRpcTransport {
     typealias NotificationHandler = @Sendable (_ method: String, _ params: Data) -> Void
     typealias RequestHandler = @Sendable (_ id: JsonRpcId, _ method: String, _ params: Data) -> Void
+    typealias ExitHandler = @Sendable () -> Void
 
     private let process: Process
     private let stdinPipe: Pipe
@@ -43,6 +44,7 @@ actor JsonRpcTransport {
     private var pending: [JsonRpcId: CheckedContinuation<Data, Error>] = [:]
     private var notificationHandler: NotificationHandler?
     private var requestHandler: RequestHandler?
+    private var exitHandler: ExitHandler?
     private var readBuffer = Data()
     private var isRunning = false
 
@@ -69,10 +71,12 @@ actor JsonRpcTransport {
 
     func start(
         onNotification: @escaping NotificationHandler,
-        onRequest: @escaping RequestHandler
+        onRequest: @escaping RequestHandler,
+        onExit: ExitHandler? = nil
     ) throws {
         notificationHandler = onNotification
         requestHandler = onRequest
+        exitHandler = onExit
         do {
             try process.run()
         } catch {
@@ -175,6 +179,9 @@ actor JsonRpcTransport {
         pending.removeAll()
         for (_, cont) in toFail { cont.resume(throwing: JsonRpcTransportError.processNotRunning) }
         isRunning = false
+        let onExit = exitHandler
+        exitHandler = nil
+        onExit?()
     }
 
     private func sendRawRequest<Params: Encodable>(method: String, params: Params) async throws -> Data {

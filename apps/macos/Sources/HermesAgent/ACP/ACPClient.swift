@@ -50,6 +50,9 @@ final class ACPClient: @unchecked Sendable {
             },
             onRequest: { id, method, params in
                 Task { await weakSelf.value?.handleRequest(id: id, method: method, params: params) }
+            },
+            onExit: {
+                Task { await weakSelf.value?.handleExit() }
             }
         )
     }
@@ -106,6 +109,10 @@ final class ACPClient: @unchecked Sendable {
     }
 
     // MARK: - Inbound
+
+    private func handleExit() async {
+        await delegate?.acpClientDidExit(self, error: nil)
+    }
 
     private func handleNotification(method: String, params: Data) async {
         guard method == ACPMethod.sessionUpdate else {
