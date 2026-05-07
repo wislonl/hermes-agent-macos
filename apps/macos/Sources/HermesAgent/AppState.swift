@@ -32,13 +32,20 @@ final class AppState {
         case .messageDelta(_, let delta):
             messages.append(ChatMessage(id: UUID(), author: .assistant, text: delta))
         case .toolRequested(_, let toolCallId, let tool, let summary):
-            toolCalls.append(ToolCall(
-                id: toolCallId,
-                title: tool,
-                detail: summary,
-                requiresApproval: false,
-                approvalId: nil
-            ))
+            if let index = toolCalls.firstIndex(where: { $0.id == toolCallId }) {
+                toolCalls[index].title = tool
+                if !toolCalls[index].requiresApproval {
+                    toolCalls[index].detail = summary
+                }
+            } else {
+                toolCalls.append(ToolCall(
+                    id: toolCallId,
+                    title: tool,
+                    detail: summary,
+                    requiresApproval: false,
+                    approvalId: nil
+                ))
+            }
         case .approvalRequired(_, let approvalId, let toolCallId, let command):
             approvals.append(ApprovalRequest(id: approvalId, command: command, decision: nil))
             if let index = toolCalls.firstIndex(where: { $0.id == toolCallId }) {
