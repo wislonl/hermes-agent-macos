@@ -128,6 +128,8 @@ Response result:
 
 ### `approval.required`
 
+Shell command approval:
+
 ```json
 {
   "event": "approval.required",
@@ -142,6 +144,28 @@ Response result:
   }
 }
 ```
+
+File write approval:
+
+```json
+{
+  "event": "approval.required",
+  "runId": "run_123",
+  "approvalId": "approval_456",
+  "toolCallId": "tool_456",
+  "operation": {
+    "tool": "file.write",
+    "path": "/Users/example/project/README.md",
+    "mode": "overwrite",
+    "contentPreview": "# Hermes Agent\n\nUpdated project overview.\n",
+    "byteCount": 40,
+    "contentSha256": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+    "risk": "writes-files"
+  }
+}
+```
+
+`file.write` approvals must include the target path, write mode, content preview, byte count, and `writes-files` risk so the app can show the exact requested write before the user decides.
 
 ### `tool.result`
 

@@ -16,6 +16,12 @@ Run all available local checks:
 ./scripts/check.sh
 ```
 
+Protocol schema validation requires Python and `jsonschema`:
+
+```bash
+python3 -m pip install jsonschema
+```
+
 ## Pull Request Expectations
 
 - Keep changes focused.

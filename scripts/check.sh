@@ -33,8 +33,12 @@ print(f"Protocol JSON syntax valid: schema and {len(examples)} example(s)")
 try:
     import jsonschema
 except ImportError:
-    print("warning: Python jsonschema package is unavailable; skipping protocol schema/example validation", file=sys.stderr)
-    raise SystemExit(0)
+    print(
+        "error: Python package jsonschema is required for protocol schema validation; "
+        "install with python3 -m pip install jsonschema",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 jsonschema.Draft202012Validator.check_schema(schema)
 validator = jsonschema.Draft202012Validator(schema)
@@ -100,6 +104,31 @@ negative_cases = {
         "operation": {
             "tool": "file.write",
             "risk": "writes-files"
+        }
+    },
+    "file.write approval missing audit metadata": {
+        "event": "approval.required",
+        "runId": "run_123",
+        "approvalId": "approval_123",
+        "toolCallId": "tool_123",
+        "operation": {
+            "tool": "file.write",
+            "path": "/Users/example/project/README.md",
+            "risk": "writes-files"
+        }
+    },
+    "file.write approval with wrong risk": {
+        "event": "approval.required",
+        "runId": "run_123",
+        "approvalId": "approval_123",
+        "toolCallId": "tool_123",
+        "operation": {
+            "tool": "file.write",
+            "path": "/Users/example/project/README.md",
+            "mode": "overwrite",
+            "contentPreview": "# Hermes Agent\n",
+            "byteCount": 15,
+            "risk": "read-only"
         }
     },
     "failed tool.result without error": {

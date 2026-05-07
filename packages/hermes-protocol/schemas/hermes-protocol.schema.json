@@ -673,6 +673,9 @@
       "required": [
         "tool",
         "path",
+        "mode",
+        "contentPreview",
+        "byteCount",
         "risk"
       ],
       "properties": {
@@ -681,6 +684,24 @@
         },
         "path": {
           "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "create",
+            "overwrite",
+            "append"
+          ]
+        },
+        "contentPreview": {
+          "type": "string"
+        },
+        "byteCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contentSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "risk": {
           "const": "writes-files"
