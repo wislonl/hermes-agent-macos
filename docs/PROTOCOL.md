@@ -82,7 +82,7 @@ Response result:
 
 ### `approval.resolve`
 
-Resolves a pending approval request.
+Target method for resolving a pending approval request. This method is part of the protocol direction, but the current MVP runtime does not implement it yet.
 
 Request params:
 

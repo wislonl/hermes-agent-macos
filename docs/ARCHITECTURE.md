@@ -51,8 +51,10 @@ Responsibilities:
 2. The app sends a `run.create` request to the runtime.
 3. The runtime emits events such as `message.delta`, `tool.requested`, `approval.required`, `tool.result`, and `run.completed`.
 4. The app renders the stream in the center pane and tool details in the right pane.
-5. If approval is required, the app asks the user and sends `approval.resolve`.
-6. The runtime continues, cancels, or fails the run based on the approval decision.
+5. If approval is required, the app asks the user and records the decision.
+6. The target protocol flow will send `approval.resolve` so the runtime can continue, cancel, or fail the run based on the exact approval decision.
+
+The current MVP implements shell approval preview and local decision recording. It does not execute shell commands or send approval decisions back to the runtime yet.
 
 ## Trust Boundaries
 
