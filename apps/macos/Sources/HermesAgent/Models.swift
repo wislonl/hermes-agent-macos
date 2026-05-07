@@ -47,12 +47,17 @@ struct SessionSummary: Identifiable, Equatable {
 
     var displayTitle: String {
         var s = title
-        // If there's a closing </think>, keep only what comes after it.
         if let closeRange = s.range(of: "</think>", options: .caseInsensitive) {
-            s = String(s[closeRange.upperBound...])
-        } else if let openRange = s.range(of: "<think>", options: .caseInsensitive) {
-            // Unclosed <think> block — drop everything from it onward.
-            s = String(s[s.startIndex..<openRange.lowerBound])
+            // Closed block: prefer text after </think> as the final title.
+            let after = String(s[closeRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !after.isEmpty { return after }
+            // Nothing after </think> — fall through to extract from inside.
+            s = String(s[s.startIndex..<closeRange.lowerBound])
+        }
+        if let openRange = s.range(of: "<think>", options: .caseInsensitive) {
+            // Take the description inside the think block (hermes stores session
+            // summaries there, often truncated without a closing tag).
+            s = String(s[openRange.upperBound...])
         }
         s = s.trimmingCharacters(in: .whitespacesAndNewlines)
         return s.isEmpty ? "Session \(id.prefix(8))" : s

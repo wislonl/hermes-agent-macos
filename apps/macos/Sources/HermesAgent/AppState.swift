@@ -93,6 +93,8 @@ final class AppState: NSObject {
                 self?.appendSystem("Prompt failed: \(error.localizedDescription)")
             }
             self?.isAwaitingResponse = false
+            // Refresh session list so the title updates after hermes generates one.
+            await self?.refreshSessions()
         }
     }
 
@@ -106,7 +108,15 @@ final class AppState: NSObject {
             self.toolCalls = []
             self.applyModelState(result.models)
             self.availableSlashCommands.removeAll()
-            await refreshSessions()
+            // Hermes only includes sessions with messages in session/list, so insert
+            // the new session into the local list immediately.
+            let placeholder = SessionSummary(
+                id: result.sessionId,
+                title: "New conversation",
+                cwd: workspacePath,
+                updatedAt: nil
+            )
+            sessions.insert(placeholder, at: 0)
         } catch {
             appendSystem("Could not create session: \(error.localizedDescription)")
         }
@@ -122,9 +132,6 @@ final class AppState: NSObject {
             self.messages = messageCache[sessionId] ?? []
             self.toolCalls = toolCallCache[sessionId] ?? []
             self.applyModelState(result.models)
-            if messageCache[sessionId] == nil {
-                self.appendSystem("Session loaded — previous messages not shown (app was restarted).")
-            }
         } catch {
             appendSystem("Could not load session: \(error.localizedDescription)")
         }
