@@ -171,6 +171,22 @@ final class AppState: NSObject {
         }
     }
 
+    func renameSession(_ sessionId: String, title: String) {
+        // Update the local list immediately.
+        if let idx = sessions.firstIndex(where: { $0.id == sessionId }) {
+            sessions[idx].title = title
+        }
+        // Persist to hermes session file.
+        let filePath = NSHomeDirectory() + "/.hermes/sessions/session_\(sessionId).json"
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)),
+              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+        json["title"] = title
+        if let updated = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted) {
+            try? updated.write(to: URL(fileURLWithPath: filePath))
+        }
+    }
+
     func resolveApproval(optionId: String?) {
         guard let permission = pendingPermission, let client else { return }
         pendingPermission = nil

@@ -1,24 +1,9 @@
 import SwiftUI
 
-private extension String {
-    // Strip <think>...</think> blocks (including multiline) and trim whitespace.
-    func strippingThinkTags() -> String {
-        var result = self
-        while let open = result.range(of: "<think>", options: .caseInsensitive),
-              let close = result.range(of: "</think>", options: .caseInsensitive),
-              open.lowerBound <= close.lowerBound {
-            result.removeSubrange(open.lowerBound..<close.upperBound)
-        }
-        // Also strip unclosed <think> block that reaches end of string
-        if let open = result.range(of: "<think>", options: .caseInsensitive) {
-            result.removeSubrange(open.lowerBound...)
-        }
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}
-
 struct SidebarView: View {
     @Bindable var state: AppState
+    @State private var renaming: SessionSummary? = nil
+    @State private var renameText: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -56,29 +41,104 @@ struct SidebarView: View {
                     }
                 )) {
                     ForEach(state.sessions) { session in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(session.displayTitle)
-                                .font(.headline)
-                                .lineLimit(1)
-                            Text(session.displayCwd)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        }
-                        .tag(session.id)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                state.deleteSession(session.id)
-                            } label: {
-                                Label("Delete Session", systemImage: "trash")
-                            }
-                        }
+                        sessionRow(session)
+                            .tag(session.id)
                     }
                 }
                 .listStyle(.sidebar)
             }
         }
         .navigationTitle("Hermes")
+        .sheet(item: $renaming) { session in
+            RenameSheet(
+                initialTitle: session.displayTitle,
+                onConfirm: { newTitle in
+                    state.renameSession(session.id, title: newTitle)
+                    renaming = nil
+                },
+                onCancel: { renaming = nil }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func sessionRow(_ session: SessionSummary) -> some View {
+        HStack(alignment: .center, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(session.displayTitle)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text(session.displayCwd)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer()
+
+            Menu {
+                Button {
+                    renameText = session.displayTitle
+                    renaming = session
+                } label: {
+                    Label("Rename", systemImage: "pencil")
+                }
+                Divider()
+                Button(role: .destructive) {
+                    state.deleteSession(session.id)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .foregroundStyle(.secondary)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+}
+
+private struct RenameSheet: View {
+    let initialTitle: String
+    let onConfirm: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var text: String
+    @FocusState private var focused: Bool
+
+    init(initialTitle: String, onConfirm: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
+        self.initialTitle = initialTitle
+        self.onConfirm = onConfirm
+        self.onCancel = onCancel
+        _text = State(initialValue: initialTitle)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Rename Session").font(.headline)
+            TextField("Session title", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .focused($focused)
+                .onSubmit { commit() }
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Rename", action: commit)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(width: 320)
+        .onAppear { focused = true }
+    }
+
+    private func commit() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        onConfirm(trimmed)
     }
 }
