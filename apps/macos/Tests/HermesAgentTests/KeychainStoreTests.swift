@@ -5,15 +5,15 @@ final class KeychainStoreTests: XCTestCase {
     func testSetSecretThrowsUnimplemented() {
         let store = KeychainStore()
 
-        XCTAssertThrowsError(try store.setSecret("token", forKey: "OPENAI_API_KEY")) { error in
+        XCTAssertThrowsError(try store.setSecret("token", account: "OPENAI_API_KEY")) { error in
             XCTAssertEqual(error as? KeychainStoreError, .unimplemented)
         }
     }
 
-    func testSecretForKeyThrowsUnimplemented() {
+    func testGetSecretThrowsUnimplemented() {
         let store = KeychainStore()
 
-        XCTAssertThrowsError(try store.secret(forKey: "OPENAI_API_KEY")) { error in
+        XCTAssertThrowsError(try store.getSecret(account: "OPENAI_API_KEY")) { error in
             XCTAssertEqual(error as? KeychainStoreError, .unimplemented)
         }
     }
@@ -21,7 +21,7 @@ final class KeychainStoreTests: XCTestCase {
     func testDeleteSecretThrowsUnimplemented() {
         let store = KeychainStore()
 
-        XCTAssertThrowsError(try store.deleteSecret(forKey: "OPENAI_API_KEY")) { error in
+        XCTAssertThrowsError(try store.deleteSecret(account: "OPENAI_API_KEY")) { error in
             XCTAssertEqual(error as? KeychainStoreError, .unimplemented)
         }
     }

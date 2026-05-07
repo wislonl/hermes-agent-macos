@@ -1,9 +1,9 @@
 import Foundation
 
 protocol SecretStore {
-    func setSecret(_ secret: String, forKey key: String) throws
-    func secret(forKey key: String) throws -> String?
-    func deleteSecret(forKey key: String) throws
+    func setSecret(_ value: String, account: String) throws
+    func getSecret(account: String) throws -> String?
+    func deleteSecret(account: String) throws
 }
 
 enum KeychainStoreError: Error, Equatable {
@@ -11,15 +11,15 @@ enum KeychainStoreError: Error, Equatable {
 }
 
 struct KeychainStore: SecretStore {
-    func setSecret(_ secret: String, forKey key: String) throws {
+    func setSecret(_ value: String, account: String) throws {
         throw KeychainStoreError.unimplemented
     }
 
-    func secret(forKey key: String) throws -> String? {
+    func getSecret(account: String) throws -> String? {
         throw KeychainStoreError.unimplemented
     }
 
-    func deleteSecret(forKey key: String) throws {
+    func deleteSecret(account: String) throws {
         throw KeychainStoreError.unimplemented
     }
 }

@@ -29,4 +29,21 @@ final class FileSessionStoreTests: XCTestCase {
 
         XCTAssertEqual(try store.loadSessions(), sessions)
     }
+
+    func testCorruptSessionFileThrows() throws {
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("HermesAgentTests-\(UUID().uuidString)", isDirectory: true)
+        let fileURL = directoryURL.appendingPathComponent("sessions.json")
+        defer { try? FileManager.default.removeItem(at: directoryURL) }
+
+        try FileManager.default.createDirectory(
+            at: directoryURL,
+            withIntermediateDirectories: true
+        )
+        try Data("{not valid json".utf8).write(to: fileURL)
+
+        let store = FileSessionStore(fileURL: fileURL)
+
+        XCTAssertThrowsError(try store.loadSessions())
+    }
 }
