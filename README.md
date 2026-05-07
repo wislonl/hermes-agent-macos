@@ -6,7 +6,7 @@ The project is planned as an open-source app with a native SwiftUI interface, a 
 
 ## Status
 
-Hermes Agent is an early MVP. The repository now includes a SwiftUI macOS workbench, a Rust runtime, a typed JSON-RPC protocol schema, local session storage, Keychain-backed secret storage, shell approval previews, and a provider adapter boundary.
+Hermes Agent is an early MVP. The repository now includes a SwiftUI macOS workbench, a Rust runtime, a typed JSON-RPC protocol schema, local session storage, Keychain-backed secret storage, shell approval previews, app-to-runtime JSON-RPC wiring, and Echo/OpenAI-compatible provider adapters.
 
 ## MVP
 
@@ -19,6 +19,7 @@ The first version will provide:
 - Tool-call visibility.
 - Approval before shell commands, file writes, and sensitive actions.
 - API key storage in macOS Keychain.
+- Provider presets for Echo, DeepSeek, OpenAI, OpenRouter, Together, Fireworks, Groq, Moonshot/Kimi, Qwen/Bailian, Zhipu/GLM, MiniMax, Volcengine Ark, Ollama, and custom OpenAI-compatible endpoints. API keys are stored in Keychain.
 
 ## Planned Architecture
 
@@ -78,6 +79,8 @@ Run the macOS app locally:
 ```bash
 swift run --package-path apps/macos HermesAgent
 ```
+
+From Finder, double-click `Open Hermes Agent.command` in the repository root to build and launch the packaged app with the runtime bundled.
 
 ## License
 

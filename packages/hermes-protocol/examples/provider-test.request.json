@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": "req_provider_test",
+  "method": "provider.test",
+  "params": {}
+}

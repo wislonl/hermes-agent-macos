@@ -1,5 +1,8 @@
 use assert_cmd::Command;
 use serde_json::{json, Value};
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::thread;
 
 fn run_runtime_bytes(stdin: impl Into<Vec<u8>>) -> Vec<Value> {
     let mut cmd = Command::cargo_bin("hermes-runtime").unwrap();
@@ -16,6 +19,20 @@ fn run_runtime(stdin: &str) -> Vec<Value> {
     run_runtime_bytes(stdin)
 }
 
+fn run_runtime_with_env(stdin: &str, envs: &[(&str, &str)]) -> Vec<Value> {
+    let mut cmd = Command::cargo_bin("hermes-runtime").unwrap();
+    for (key, value) in envs {
+        cmd.env(key, value);
+    }
+    let assert = cmd.write_stdin(stdin).assert().success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    stdout
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect()
+}
+
 fn run_create_request(id: &str, prompt: &str) -> Value {
     json!({
         "jsonrpc": "2.0",
@@ -28,6 +45,12 @@ fn run_create_request(id: &str, prompt: &str) -> Value {
                 "type": "text",
                 "text": prompt
             },
+            "history": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
             "workspace": {
                 "path": "/Users/example/project"
             }
@@ -37,6 +60,25 @@ fn run_create_request(id: &str, prompt: &str) -> Value {
 
 fn run_create_prompt(id: &str, prompt: &str) -> Vec<Value> {
     run_runtime(&run_create_request(id, prompt).to_string())
+}
+
+fn local_unauthorized_provider_url() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    thread::spawn(move || {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buffer = [0; 4096];
+            let _ = stream.read(&mut buffer);
+            let body = r#"{"type":"error","error":{"type":"authorized_error","message":"invalid api key"}}"#;
+            let response = format!(
+                "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = stream.write_all(response.as_bytes());
+        }
+    });
+    format!("http://{}", address)
 }
 
 #[test]
@@ -63,9 +105,41 @@ fn handshake_returns_runtime_capabilities() {
 }
 
 #[test]
+fn provider_test_returns_configured_provider_status() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"req_provider_test","method":"provider.test","params":{}}"#,
+    );
+
+    assert_eq!(
+        output,
+        vec![json!({
+            "jsonrpc": "2.0",
+            "id": "req_provider_test",
+            "result": {
+                "status": "ok",
+                "provider": "Echo",
+                "model": "echo"
+            }
+        })]
+    );
+}
+
+#[test]
+fn provider_test_rejects_extra_params() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"req_provider_test_extra","method":"provider.test","params":{"unexpected":true}}"#,
+    );
+
+    assert_eq!(output.len(), 1);
+    assert_eq!(output[0]["jsonrpc"], "2.0");
+    assert_eq!(output[0]["id"], "req_provider_test_extra");
+    assert_eq!(output[0]["error"]["code"], -32600);
+}
+
+#[test]
 fn run_create_returns_running_response_and_mock_events() {
     let output = run_runtime(
-        r#"{"jsonrpc":"2.0","id":"req_2","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Summarize this repository."},"workspace":{"path":"/Users/example/project"}}}"#,
+        r#"{"jsonrpc":"2.0","id":"req_2","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Summarize this repository."},"history":[{"role":"user","content":"Summarize this repository."}],"workspace":{"path":"/Users/example/project"}}}"#,
     );
 
     assert_eq!(output.len(), 3);
@@ -91,6 +165,41 @@ fn run_create_returns_running_response_and_mock_events() {
             "runId": run_id,
             "status": "completed"
         })
+    );
+}
+
+#[test]
+fn run_create_accepts_conversation_history() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"req_history","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Follow up"},"history":[{"role":"assistant","content":"Previous answer"},{"role":"user","content":"Follow up"}],"workspace":{"path":"/Users/example/project"}}}"#,
+    );
+
+    assert_eq!(output.len(), 3);
+    assert_eq!(output[0]["id"], "req_history");
+    assert_eq!(output[0]["result"]["status"], "running");
+}
+
+#[test]
+fn openai_compatible_provider_failure_returns_json_rpc_error_without_panicking() {
+    let provider_url = local_unauthorized_provider_url();
+    let output = run_runtime_with_env(
+        &run_create_request("req_minimax_failure", "hello").to_string(),
+        &[
+            ("HERMES_PROVIDER", "openai-compatible"),
+            ("OPENAI_COMPATIBLE_BASE_URL", provider_url.as_str()),
+            ("OPENAI_COMPATIBLE_MODEL", "MiniMax-M2.7-highspeed"),
+            ("OPENAI_COMPATIBLE_API_KEY", "sk-placeholder"),
+        ],
+    );
+
+    assert_eq!(output.len(), 1);
+    assert_eq!(output[0]["jsonrpc"], "2.0");
+    assert_eq!(output[0]["id"], "req_minimax_failure");
+    assert_eq!(output[0]["error"]["code"], -32603);
+    let message = output[0]["error"]["message"].as_str().unwrap();
+    assert_eq!(
+        message,
+        "Provider authentication failed. Check the API key and provider region."
     );
 }
 

@@ -126,11 +126,13 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.messages.last?.text, "Runtime response")
     }
 
-    func testSubmitDraftAppendsUserMessageAndMockAssistantEvent() {
-        let state = AppState()
+    func testSubmitDraftAppendsUserMessageAndRuntimeAssistantEvent() async {
+        let state = AppState(runtimeClient: StateRuntimeClient(eventsByInput: [
+            "Hello Hermes": [.messageDelta(runId: "run_1", delta: "Hermes is connected to the workbench.")]
+        ]))
         state.draft = "Hello Hermes"
 
-        state.submitDraft()
+        await state.submitDraft()
 
         XCTAssertEqual(state.messages.suffix(2).map(\.author), [.user, .assistant])
         XCTAssertEqual(state.messages.suffix(2).map(\.text), [
@@ -140,11 +142,26 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.draft, "")
     }
 
-    func testSubmitDraftWithShellPromptCreatesApprovalRequest() {
-        let state = AppState()
+    func testSubmitDraftWithShellPromptCreatesApprovalRequest() async {
+        let state = AppState(runtimeClient: StateRuntimeClient(eventsByInput: [
+            "/shell pwd && ls": [
+                .toolRequested(
+                    runId: "run_1",
+                    toolCallId: "tool_shell_preview_run_1",
+                    tool: "shell",
+                    summary: "Preview shell command"
+                ),
+                .approvalRequired(
+                    runId: "run_1",
+                    approvalId: "approval_shell_preview_run_1",
+                    toolCallId: "tool_shell_preview_run_1",
+                    command: "pwd && ls"
+                )
+            ]
+        ]))
         state.draft = "/shell pwd && ls"
 
-        state.submitDraft()
+        await state.submitDraft()
 
         XCTAssertEqual(state.messages.last?.author, .user)
         XCTAssertEqual(state.messages.last?.text, "/shell pwd && ls")
@@ -158,13 +175,42 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.draft, "")
     }
 
-    func testSubmitDraftWithMultipleShellPromptsCreatesDistinctApprovalRequests() {
-        let state = AppState()
+    func testSubmitDraftWithMultipleShellPromptsCreatesDistinctApprovalRequests() async {
+        let state = AppState(runtimeClient: StateRuntimeClient(eventsByInput: [
+            "/shell pwd": [
+                .toolRequested(
+                    runId: "run_1",
+                    toolCallId: "tool_shell_preview_run_1",
+                    tool: "shell",
+                    summary: "Preview shell command"
+                ),
+                .approvalRequired(
+                    runId: "run_1",
+                    approvalId: "approval_shell_preview_run_1",
+                    toolCallId: "tool_shell_preview_run_1",
+                    command: "pwd"
+                )
+            ],
+            "/shell ls": [
+                .toolRequested(
+                    runId: "run_2",
+                    toolCallId: "tool_shell_preview_run_2",
+                    tool: "shell",
+                    summary: "Preview shell command"
+                ),
+                .approvalRequired(
+                    runId: "run_2",
+                    approvalId: "approval_shell_preview_run_2",
+                    toolCallId: "tool_shell_preview_run_2",
+                    command: "ls"
+                )
+            ]
+        ]))
 
         state.draft = "/shell pwd"
-        state.submitDraft()
+        await state.submitDraft()
         state.draft = "/shell ls"
-        state.submitDraft()
+        await state.submitDraft()
 
         XCTAssertEqual(state.toolCalls.count, 2)
         XCTAssertEqual(state.approvals.count, 2)
@@ -173,14 +219,51 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.approvals.map(\.command), ["pwd", "ls"])
     }
 
-    func testSubmitDraftWithShellMentionLaterDoesNotCreateApprovalRequest() {
-        let state = AppState()
+    func testSubmitDraftWithShellMentionLaterDoesNotCreateApprovalRequest() async {
+        let state = AppState(runtimeClient: StateRuntimeClient(eventsByInput: [
+            "Explain why /shell needs approval.": [
+                .messageDelta(runId: "run_1", delta: "Runtime response")
+            ]
+        ]))
         state.draft = "Explain why /shell needs approval."
 
-        state.submitDraft()
+        await state.submitDraft()
 
         XCTAssertTrue(state.toolCalls.isEmpty)
         XCTAssertTrue(state.approvals.isEmpty)
         XCTAssertEqual(state.messages.last?.author, .assistant)
+    }
+}
+
+private final class StateRuntimeClient: RuntimeClient {
+    private let eventsByInput: [String: [RuntimeEvent]]
+
+    init(eventsByInput: [String: [RuntimeEvent]]) {
+        self.eventsByInput = eventsByInput
+    }
+
+    func handshake() async throws -> RuntimeHandshakeResult {
+        RuntimeHandshakeResult(
+            protocolVersion: "0.1.0",
+            runtime: RuntimeInfo(name: "state-test-runtime", version: "0.1.0"),
+            capabilities: ["runs"]
+        )
+    }
+
+    func testProvider() async throws -> ProviderTestResult {
+        ProviderTestResult(status: "ok", provider: "Echo", model: "echo")
+    }
+
+    func createRun(
+        sessionId: String,
+        agentProfileId: String,
+        input: String,
+        history: [RunHistoryMessage],
+        workspacePath: String
+    ) async throws -> RuntimeRun {
+        RuntimeRun(
+            result: RunCreateResult(runId: "run_1", status: "running"),
+            events: eventsByInput[input, default: []]
+        )
     }
 }

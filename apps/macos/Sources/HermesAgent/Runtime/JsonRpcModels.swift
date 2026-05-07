@@ -280,16 +280,55 @@ struct RuntimeInfo: Decodable, Equatable {
     }
 }
 
+struct ProviderTestParams: Encodable {}
+
+struct ProviderTestResult: Decodable, Equatable {
+    let status: String
+    let provider: String
+    let model: String
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case status
+        case provider
+        case model
+    }
+
+    init(status: String, provider: String, model: String) {
+        self.status = status
+        self.provider = provider
+        self.model = model
+    }
+
+    init(from decoder: Decoder) throws {
+        try validateNoUnknownKeys(
+            in: decoder,
+            allowedBy: CodingKeys.self,
+            debugDescription: "provider.test result contains unknown keys."
+        )
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        status = try container.decode(String.self, forKey: .status)
+        provider = try container.decode(String.self, forKey: .provider)
+        model = try container.decode(String.self, forKey: .model)
+    }
+}
+
 struct RunCreateParams: Encodable {
     let sessionId: String
     let agentProfileId: String
     let input: RunInput
+    let history: [RunHistoryMessage]
     let workspace: Workspace
 }
 
 struct RunInput: Encodable {
     let type: String
     let text: String
+}
+
+struct RunHistoryMessage: Encodable, Equatable {
+    let role: String
+    let content: String
 }
 
 struct Workspace: Encodable {

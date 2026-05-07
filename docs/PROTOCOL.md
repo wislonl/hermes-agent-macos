@@ -63,11 +63,23 @@ Request params:
     "type": "text",
     "text": "Summarize this repository."
   },
+  "history": [
+    {
+      "role": "assistant",
+      "content": "I can help inspect this workspace."
+    },
+    {
+      "role": "user",
+      "content": "Summarize this repository."
+    }
+  ],
   "workspace": {
     "path": "/Users/example/project"
   }
 }
 ```
+
+`history` is optional and carries recent conversation messages as `user`, `assistant`, or `system` roles. The app sends recent visible chat turns so the runtime can call providers with a real conversation instead of a single prompt.
 
 For MVP shell previews, text that trims to `/shell` or begins with `/shell` followed by whitespace requests shell approval. The runtime emits `tool.requested` and `approval.required` events and does not execute the command until a later execution slice implements approval resolution.
 
@@ -77,6 +89,26 @@ Response result:
 {
   "runId": "run_123",
   "status": "running"
+}
+```
+
+### `provider.test`
+
+Tests the currently configured model provider by sending a lightweight provider request through the same adapter used by normal runs.
+
+Request params:
+
+```json
+{}
+```
+
+Response result:
+
+```json
+{
+  "status": "ok",
+  "provider": "MiniMax (China)",
+  "model": "MiniMax-M2.7-highspeed"
 }
 ```
 

@@ -30,6 +30,9 @@
           "$ref": "#/$defs/runCreateRequest"
         },
         {
+          "$ref": "#/$defs/providerTestRequest"
+        },
+        {
           "$ref": "#/$defs/approvalResolveRequest"
         }
       ]
@@ -98,6 +101,9 @@
         },
         {
           "$ref": "#/$defs/runCreateResult"
+        },
+        {
+          "$ref": "#/$defs/providerTestResult"
         },
         {
           "$ref": "#/$defs/approvalResolveResult"
@@ -171,6 +177,26 @@
         },
         "status": {
           "const": "resolved"
+        }
+      },
+      "additionalProperties": false
+    },
+    "providerTestResult": {
+      "type": "object",
+      "required": [
+        "status",
+        "provider",
+        "model"
+      ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -303,6 +329,25 @@
       ],
       "unevaluatedProperties": false
     },
+    "providerTestRequest": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/jsonRpcRequestBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "provider.test"
+            },
+            "params": {
+              "$ref": "#/$defs/providerTestParams"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
     "runtimeHandshakeParams": {
       "type": "object",
       "required": [
@@ -353,10 +398,20 @@
         "input": {
           "$ref": "#/$defs/runInput"
         },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/runHistoryMessage"
+          }
+        },
         "workspace": {
           "$ref": "#/$defs/workspace"
         }
       },
+      "additionalProperties": false
+    },
+    "providerTestParams": {
+      "type": "object",
       "additionalProperties": false
     },
     "runInput": {
@@ -370,6 +425,26 @@
           "const": "text"
         },
         "text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runHistoryMessage": {
+      "type": "object",
+      "required": [
+        "role",
+        "content"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "assistant",
+            "system"
+          ]
+        },
+        "content": {
           "type": "string"
         }
       },

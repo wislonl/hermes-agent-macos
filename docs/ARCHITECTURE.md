@@ -32,7 +32,7 @@ Responsibilities:
 - Structured event streaming back to the app.
 - Runtime logs that can be inspected without exposing secrets.
 
-The current MVP runtime uses an `EchoProvider` through the provider adapter boundary. Real providers should plug into the same boundary without leaking provider errors or secrets into runtime events.
+The current MVP runtime falls back to `EchoProvider` when no provider is configured. The app exposes provider presets for common OpenAI-compatible services, stores non-secret provider settings in app preferences, and stores API keys in Keychain. When a run starts, the app passes only the selected provider's base URL, model, and secret environment to the runtime, which uses the shared OpenAI-compatible adapter. Provider errors and secrets must not leak into runtime events.
 
 ### Hermes Protocol
 

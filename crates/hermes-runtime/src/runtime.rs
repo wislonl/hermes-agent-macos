@@ -1,7 +1,10 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::provider::{EchoProvider, ModelProvider, ProviderRequest};
+use crate::provider::{
+    redacted_provider_error_message, EchoProvider, ModelProvider, OpenAICompatibleProvider,
+    ProviderMessage, ProviderRequest,
+};
 use crate::protocol::{JsonRpcError, RuntimeEvent};
 use crate::tools::ToolOperation;
 
@@ -23,15 +26,48 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
             },
             "capabilities": ["runs", "tools", "approvals"]
         }))),
+        "provider.test" => {
+            if let Some(provider) = OpenAICompatibleProvider::from_env() {
+                test_provider(&provider)
+            } else {
+                let provider = EchoProvider;
+                test_provider(&provider)
+            }
+        }
         "run.create" => {
-            let provider = EchoProvider;
-            create_run(params, &provider)
+            if let Some(provider) = OpenAICompatibleProvider::from_env() {
+                create_run(params, &provider)
+            } else {
+                let provider = EchoProvider;
+                create_run(params, &provider)
+            }
         }
         _ => Err(JsonRpcError {
             code: -32601,
             message: format!("Unknown method: {}", method),
         }),
     }
+}
+
+pub fn test_provider(provider: &impl ModelProvider) -> Result<HandlerOutput, JsonRpcError> {
+    provider
+        .stream(ProviderRequest {
+            input: "Reply with exactly: OK".to_string(),
+            messages: vec![ProviderMessage {
+                role: "user".to_string(),
+                content: "Reply with exactly: OK".to_string(),
+            }],
+        })
+        .map_err(|error| JsonRpcError {
+            code: -32603,
+            message: redacted_provider_error_message(&error),
+        })?;
+
+    Ok(HandlerOutput::Response(json!({
+        "status": "ok",
+        "provider": provider.name(),
+        "model": provider.model(),
+    })))
 }
 
 pub fn create_run(
@@ -43,13 +79,15 @@ pub fn create_run(
         .pointer("/input/text")
         .and_then(Value::as_str)
         .unwrap_or("Start Hermes run.");
+    let messages = history_messages(&params);
     let deltas = provider
         .stream(ProviderRequest {
             input: prompt.to_string(),
+            messages,
         })
-        .map_err(|_| JsonRpcError {
+        .map_err(|error| JsonRpcError {
             code: -32603,
-            message: "Provider stream failed".to_string(),
+            message: redacted_provider_error_message(&error),
         })?;
     let mut events = deltas
         .into_iter()
@@ -91,6 +129,24 @@ pub fn create_run(
         response: json!({ "runId": run_id, "status": "running" }),
         events,
     })
+}
+
+fn history_messages(params: &Value) -> Vec<ProviderMessage> {
+    params
+        .get("history")
+        .and_then(Value::as_array)
+        .map(|messages| {
+            messages
+                .iter()
+                .filter_map(|message| {
+                    Some(ProviderMessage {
+                        role: message.get("role")?.as_str()?.to_string(),
+                        content: message.get("content")?.as_str()?.to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn shell_command_from_prompt(prompt: &str) -> Option<String> {

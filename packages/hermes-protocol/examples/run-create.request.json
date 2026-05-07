@@ -9,6 +9,16 @@
       "type": "text",
       "text": "Summarize this repository."
     },
+    "history": [
+      {
+        "role": "assistant",
+        "content": "I can help inspect this workspace."
+      },
+      {
+        "role": "user",
+        "content": "Summarize this repository."
+      }
+    ],
     "workspace": {
       "path": "/Users/example/project"
     }

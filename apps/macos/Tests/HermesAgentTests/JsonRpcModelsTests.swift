@@ -149,6 +149,9 @@ final class JsonRpcModelsTests: XCTestCase {
                 sessionId: "session_123",
                 agentProfileId: "agent_hermes",
                 input: RunInput(type: "text", text: "Summarize this repository."),
+                history: [
+                    RunHistoryMessage(role: "user", content: "Summarize this repository.")
+                ],
                 workspace: Workspace(path: "/Users/example/project")
             )
         )

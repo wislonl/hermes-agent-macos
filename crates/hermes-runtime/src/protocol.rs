@@ -136,11 +136,29 @@ fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
             let Some(workspace) = params.get("workspace").and_then(Value::as_object) else {
                 return false;
             };
+            let history_is_valid = params
+                .get("history")
+                .is_none_or(|history| {
+                    history.as_array().is_some_and(|messages| {
+                        messages.iter().all(|message| {
+                            let Some(message) = message.as_object() else {
+                                return false;
+                            };
+                            has_exact_fields(message, &["role", "content"])
+                                && message
+                                    .get("role")
+                                    .and_then(Value::as_str)
+                                    .is_some_and(|role| matches!(role, "user" | "assistant" | "system"))
+                                && message.get("content").and_then(Value::as_str).is_some()
+                        })
+                    })
+                });
 
-            has_exact_fields(
+            has_only_fields(
                 params,
-                &["sessionId", "agentProfileId", "input", "workspace"],
-            ) && params.get("sessionId").and_then(Value::as_str).is_some()
+                &["sessionId", "agentProfileId", "input", "history", "workspace"],
+            ) && history_is_valid
+                && params.get("sessionId").and_then(Value::as_str).is_some()
                 && params
                     .get("agentProfileId")
                     .and_then(Value::as_str)
@@ -163,12 +181,21 @@ fn has_valid_method_params(method: &str, params: &Map<String, Value>) -> bool {
                     .and_then(Value::as_str)
                     .is_some()
         }
+        "provider.test" => params.is_empty(),
         _ => true,
     }
 }
 
 fn has_exact_fields(object: &Map<String, Value>, fields: &[&str]) -> bool {
     object.len() == fields.len() && fields.iter().all(|field| object.contains_key(*field))
+}
+
+fn has_only_fields(object: &Map<String, Value>, fields: &[&str]) -> bool {
+    object.keys().all(|key| fields.contains(&key.as_str()))
+        && fields
+            .iter()
+            .filter(|field| **field != "history")
+            .all(|field| object.contains_key(*field))
 }
 
 #[derive(Debug, Serialize)]

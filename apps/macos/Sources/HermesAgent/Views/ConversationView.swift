@@ -26,8 +26,8 @@ struct ConversationView: View {
             HStack {
                 TextField("Ask Hermes", text: $state.draft)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit { state.submitDraft() }
-                Button("Send") { state.submitDraft() }
+                    .onSubmit { Task { await state.submitDraft() } }
+                Button("Send") { Task { await state.submitDraft() } }
                     .keyboardShortcut(.return, modifiers: [.command])
             }
             .padding()
