@@ -7,7 +7,8 @@
 - [x] Chat and task stream.
 - [x] Local session history.
 - [ ] Runtime process launched by the app.
-- [x] JSON-RPC communication over stdio.
+- [x] Runtime JSON-RPC stdio transport.
+- [ ] App-to-runtime child process JSON-RPC wiring.
 - [x] Provider adapter boundary.
 - [x] Tool-call visibility.
 - [x] Approval preview before shell commands.

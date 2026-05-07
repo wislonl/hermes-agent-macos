@@ -18,14 +18,12 @@ Do not turn the first version into a large cross-platform orchestration platform
 
 ## Repository Layout
 
-Expected structure:
+Current structure:
 
 - `apps/macos/` - SwiftUI macOS app.
 - `crates/hermes-runtime/` - Rust local runtime for tool execution, provider calls, logs, and process boundaries.
 - `packages/hermes-protocol/` - Shared JSON-RPC protocol schemas and generated types.
 - `docs/` - Architecture, security, roadmap, protocol, and contributor documentation.
-
-Create these directories only when the related implementation work begins.
 
 ## Technical Direction
 
@@ -53,10 +51,23 @@ Create these directories only when the related implementation work begins.
 
 ## Build and Test Commands
 
-The implementation has not been scaffolded yet, so these commands are currently unavailable. Add and verify them when the corresponding components are created:
+Run all available checks:
 
-- macOS app: `xcodebuild test -scheme HermesAgent`
-- Rust runtime: `cargo test --manifest-path crates/hermes-runtime/Cargo.toml`
-- Protocol package: package-specific typecheck and test command after scaffolding.
+```bash
+./scripts/check.sh
+```
+
+Run component checks directly:
+
+```bash
+cargo test --manifest-path crates/hermes-runtime/Cargo.toml
+swift test --package-path apps/macos
+```
+
+Run the macOS app locally:
+
+```bash
+swift run --package-path apps/macos HermesAgent
+```
 
 If a command is not yet available, say that clearly instead of inventing passing results.
