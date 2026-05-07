@@ -44,8 +44,8 @@ actor JsonRpcTransport {
     private var notificationHandler: NotificationHandler?
     private var requestHandler: RequestHandler?
 
-    private var readerTask: Task<Void, Never>?
-    private var stderrTask: Task<Void, Never>?
+    private var readerThread: DispatchWorkItem?
+    private var stderrThread: DispatchWorkItem?
     private var isRunning = false
 
     init(executableURL: URL, arguments: [String], extraEnvironment: [String: String] = [:]) {
@@ -84,9 +84,9 @@ actor JsonRpcTransport {
 
         let stdoutHandle = stdoutPipe.fileHandleForReading
         let weakSelf = WeakActorBox(self)
-        readerTask = Task.detached(priority: .utility) {
+        let readerWork = DispatchWorkItem {
             var buffer = Data()
-            while !Task.isCancelled {
+            while !Thread.current.isCancelled {
                 let chunk: Data
                 do {
                     guard let next = try stdoutHandle.read(upToCount: 4096), !next.isEmpty else { break }
@@ -99,26 +99,31 @@ actor JsonRpcTransport {
                     let lineData = buffer.subdata(in: 0..<nl)
                     buffer.removeSubrange(0...nl)
                     if lineData.isEmpty { continue }
-                    await weakSelf.value?.dispatchLine(lineData)
+                    Task { await weakSelf.value?.dispatchLine(lineData) }
                 }
             }
-            await weakSelf.value?.handleReaderEnded()
+            Task { await weakSelf.value?.handleReaderEnded() }
         }
+        readerThread = readerWork
+        DispatchQueue.global(qos: .utility).async(execute: readerWork)
+
         let stderrHandle = stderrPipe.fileHandleForReading
-        stderrTask = Task.detached(priority: .utility) {
+        let stderrWork = DispatchWorkItem {
             while let chunk = try? stderrHandle.read(upToCount: 4096), !chunk.isEmpty {
                 _ = chunk
             }
         }
+        stderrThread = stderrWork
+        DispatchQueue.global(qos: .utility).async(execute: stderrWork)
     }
 
     func stop() {
         guard isRunning else { return }
         isRunning = false
-        readerTask?.cancel()
-        stderrTask?.cancel()
-        readerTask = nil
-        stderrTask = nil
+        readerThread?.cancel()
+        stderrThread?.cancel()
+        readerThread = nil
+        stderrThread = nil
         process.terminate()
         let toFail = pending
         pending.removeAll()
