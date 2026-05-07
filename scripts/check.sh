@@ -81,6 +81,43 @@ negative_cases = {
             "command": "ls -la"
         }
     },
+    "shell approval without command": {
+        "event": "approval.required",
+        "runId": "run_123",
+        "approvalId": "approval_123",
+        "toolCallId": "tool_123",
+        "operation": {
+            "tool": "shell",
+            "workingDirectory": "/Users/example/project",
+            "risk": "executes-command"
+        }
+    },
+    "file.write approval without path": {
+        "event": "approval.required",
+        "runId": "run_123",
+        "approvalId": "approval_123",
+        "toolCallId": "tool_123",
+        "operation": {
+            "tool": "file.write",
+            "risk": "writes-files"
+        }
+    },
+    "failed tool.result without error": {
+        "event": "tool.result",
+        "runId": "run_123",
+        "toolCallId": "tool_123",
+        "status": "failed"
+    },
+    "completed tool.result with error": {
+        "event": "tool.result",
+        "runId": "run_123",
+        "toolCallId": "tool_123",
+        "status": "completed",
+        "error": {
+            "code": -32000,
+            "message": "Unexpected error"
+        }
+    },
     "unsupported run.cancel": {
         "jsonrpc": "2.0",
         "id": "req_cancel",

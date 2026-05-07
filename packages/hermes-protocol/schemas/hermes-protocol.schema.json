@@ -487,6 +487,16 @@
       "unevaluatedProperties": false
     },
     "toolResultEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/toolResultCompletedEvent"
+        },
+        {
+          "$ref": "#/$defs/toolResultFailedEvent"
+        }
+      ]
+    },
+    "toolResultCompletedEvent": {
       "allOf": [
         {
           "$ref": "#/$defs/runtimeEventBase"
@@ -495,7 +505,8 @@
           "type": "object",
           "required": [
             "toolCallId",
-            "status"
+            "status",
+            "outputPreview"
           ],
           "properties": {
             "event": {
@@ -505,13 +516,37 @@
               "type": "string"
             },
             "status": {
-              "enum": [
-                "completed",
-                "failed"
-              ]
+              "const": "completed"
             },
             "outputPreview": {
               "type": "string"
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "toolResultFailedEvent": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/runtimeEventBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "toolCallId",
+            "status",
+            "error"
+          ],
+          "properties": {
+            "event": {
+              "const": "tool.result"
+            },
+            "toolCallId": {
+              "type": "string"
+            },
+            "status": {
+              "const": "failed"
             },
             "error": {
               "$ref": "#/$defs/jsonRpcError"
@@ -577,14 +612,29 @@
       ]
     },
     "toolOperation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/shellToolOperation"
+        },
+        {
+          "$ref": "#/$defs/fileReadToolOperation"
+        },
+        {
+          "$ref": "#/$defs/fileWriteToolOperation"
+        }
+      ]
+    },
+    "shellToolOperation": {
       "type": "object",
       "required": [
         "tool",
+        "command",
+        "workingDirectory",
         "risk"
       ],
       "properties": {
         "tool": {
-          "$ref": "#/$defs/toolName"
+          "const": "shell"
         },
         "command": {
           "type": "string"
@@ -592,16 +642,48 @@
         "workingDirectory": {
           "type": "string"
         },
+        "risk": {
+          "const": "executes-command"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fileReadToolOperation": {
+      "type": "object",
+      "required": [
+        "tool",
+        "path",
+        "risk"
+      ],
+      "properties": {
+        "tool": {
+          "const": "file.read"
+        },
         "path": {
           "type": "string"
         },
         "risk": {
-          "enum": [
-            "read-only",
-            "writes-files",
-            "executes-command",
-            "network-side-effect"
-          ]
+          "const": "read-only"
+        }
+      },
+      "additionalProperties": false
+    },
+    "fileWriteToolOperation": {
+      "type": "object",
+      "required": [
+        "tool",
+        "path",
+        "risk"
+      ],
+      "properties": {
+        "tool": {
+          "const": "file.write"
+        },
+        "path": {
+          "type": "string"
+        },
+        "risk": {
+          "const": "writes-files"
         }
       },
       "additionalProperties": false
