@@ -8,8 +8,8 @@
     "path": "/Users/example/project/README.md",
     "mode": "overwrite",
     "contentPreview": "# Hermes Agent\n\nUpdated project overview.\n",
-    "byteCount": 40,
-    "contentSha256": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+    "byteCount": 42,
+    "contentSha256": "216a644f66fe4058dbf318c2e06b68ad25ebafc62617e6b538163736b6c1d005",
     "risk": "writes-files"
   }
 }

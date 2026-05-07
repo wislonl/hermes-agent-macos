@@ -12,6 +12,7 @@ if [ -f "$PROTOCOL_SCHEMA" ]; then
 
   python3 - "$ROOT_DIR" <<'PY'
 import json
+import hashlib
 import sys
 from pathlib import Path
 
@@ -48,6 +49,26 @@ for path, payload in examples:
     if errors:
         location = "/".join(str(part) for part in errors[0].path) or "<root>"
         raise SystemExit(f"{path}: schema validation failed at {location}: {errors[0].message}")
+
+file_write_example_path = examples_dir / "approval-required-file-write.event.json"
+file_write_examples = [
+    payload for path, payload in examples if path == file_write_example_path
+]
+if file_write_examples:
+    operation = file_write_examples[0]["operation"]
+    content_bytes = operation["contentPreview"].encode("utf-8")
+    actual_byte_count = len(content_bytes)
+    actual_sha256 = hashlib.sha256(content_bytes).hexdigest()
+    if operation["byteCount"] != actual_byte_count:
+        raise SystemExit(
+            f"{file_write_example_path}: byteCount {operation['byteCount']} "
+            f"does not match UTF-8 contentPreview length {actual_byte_count}"
+        )
+    if operation["contentSha256"] != actual_sha256:
+        raise SystemExit(
+            f"{file_write_example_path}: contentSha256 {operation['contentSha256']} "
+            f"does not match contentPreview SHA-256 {actual_sha256}"
+        )
 
 error_response = {
     "jsonrpc": "2.0",
