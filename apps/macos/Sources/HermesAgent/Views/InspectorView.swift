@@ -57,7 +57,21 @@ struct InspectorView: View {
     @ViewBuilder
     private var toolCallsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Tool calls").font(.headline)
+            HStack {
+                Text("Tool calls").font(.headline)
+                Spacer()
+                if !state.toolCalls.isEmpty {
+                    Button {
+                        state.clearToolCalls()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help("Clear tool calls")
+                }
+            }
             if state.toolCalls.isEmpty {
                 ContentUnavailableView(
                     "No tool calls yet",

@@ -4,6 +4,7 @@ struct SidebarView: View {
     @Bindable var state: AppState
     @State private var renaming: SessionSummary? = nil
     @State private var renameText: String = ""
+    @State private var sessionToDelete: SessionSummary? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -49,6 +50,20 @@ struct SidebarView: View {
             }
         }
         .navigationTitle("Hermes")
+        .alert("Delete Session?", isPresented: Binding(
+            get: { sessionToDelete != nil },
+            set: { if !$0 { sessionToDelete = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let s = sessionToDelete { state.deleteSession(s.id) }
+                sessionToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { sessionToDelete = nil }
+        } message: {
+            if let s = sessionToDelete {
+                Text("\"\(s.displayTitle)\" will be deleted and cannot be recovered.")
+            }
+        }
         .sheet(item: $renaming) { session in
             RenameSheet(
                 initialTitle: session.displayTitle,
@@ -86,7 +101,7 @@ struct SidebarView: View {
                 }
                 Divider()
                 Button(role: .destructive) {
-                    state.deleteSession(session.id)
+                    sessionToDelete = session
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }

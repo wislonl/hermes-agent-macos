@@ -188,6 +188,11 @@ final class AppState: NSObject {
         }
     }
 
+    func clearToolCalls() {
+        toolCalls = []
+        if let id = currentSessionId { toolCallCache[id] = [] }
+    }
+
     func resolveApproval(optionId: String?) {
         guard let permission = pendingPermission, let client else { return }
         pendingPermission = nil
@@ -296,15 +301,19 @@ extension AppState: ACPClientDelegate {
     nonisolated func acpClient(_ client: ACPClient, didEmit event: ACPEvent) async {
         await MainActor.run {
             switch event {
-            case .agentMessageChunk(_, let text):
+            case .agentMessageChunk(let sessionId, let text):
+                guard sessionId == self.currentSessionId else { break }
                 self.appendAgentChunk(text: text)
             case .agentThoughtChunk:
                 break
-            case .toolCall(_, let id, let title, let status):
+            case .toolCall(let sessionId, let id, let title, let status):
+                guard sessionId == self.currentSessionId else { break }
                 self.upsertToolCall(id: id, title: title, status: status, detail: nil)
-            case .toolCallUpdate(_, let id, let title, let status, let content):
+            case .toolCallUpdate(let sessionId, let id, let title, let status, let content):
+                guard sessionId == self.currentSessionId else { break }
                 self.upsertToolCall(id: id, title: title, status: status, detail: content)
-            case .availableCommands(_, let names):
+            case .availableCommands(let sessionId, let names):
+                guard sessionId == self.currentSessionId else { break }
                 self.availableSlashCommands = names
             case .unknown:
                 break

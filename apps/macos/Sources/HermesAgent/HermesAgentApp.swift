@@ -7,7 +7,7 @@ struct HermesAgentApp: App {
     var body: some Scene {
         WindowGroup {
             WorkbenchView(state: state)
-                .frame(minWidth: 1080, minHeight: 720)
+                .frame(minWidth: 800, minHeight: 600)
         }
         .windowStyle(.titleBar)
         .commands {
