@@ -24,66 +24,73 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
             "capabilities": ["runs", "tools", "approvals"]
         }))),
         "run.create" => {
-            let run_id = format!("run_{}", Uuid::new_v4().simple());
-            let prompt = params
-                .pointer("/input/text")
-                .and_then(Value::as_str)
-                .unwrap_or("Start Hermes run.");
             let provider = EchoProvider;
-            let deltas = provider
-                .stream(ProviderRequest {
-                    input: prompt.to_string(),
-                })
-                .map_err(|error| JsonRpcError {
-                    code: -32603,
-                    message: format!("Provider stream failed: {}", error),
-                })?;
-            let mut events = deltas
-                .into_iter()
-                .map(|delta| RuntimeEvent::MessageDelta {
-                    run_id: run_id.clone(),
-                    delta: delta.text,
-                })
-                .collect::<Vec<_>>();
-
-            if let Some(command) = shell_command_from_prompt(prompt) {
-                let tool_call_id = format!("tool_shell_preview_{}", run_id);
-                let approval_id = format!("approval_shell_preview_{}", run_id);
-                events.push(RuntimeEvent::ToolRequested {
-                    run_id: run_id.clone(),
-                    tool_call_id: tool_call_id.clone(),
-                    tool: "shell".to_string(),
-                    summary: "Preview shell command".to_string(),
-                });
-                events.push(RuntimeEvent::ApprovalRequired {
-                    run_id: run_id.clone(),
-                    approval_id,
-                    tool_call_id,
-                    operation: ToolOperation {
-                        tool: "shell".to_string(),
-                        command: Some(command),
-                        working_directory: Some(".".to_string()),
-                        path: None,
-                        risk: "executes-command".to_string(),
-                    },
-                });
-            } else {
-                events.push(RuntimeEvent::RunCompleted {
-                    run_id: run_id.clone(),
-                    status: "completed".to_string(),
-                });
-            }
-
-            Ok(HandlerOutput::ResponseWithEvents {
-                response: json!({ "runId": run_id, "status": "running" }),
-                events,
-            })
+            create_run(params, &provider)
         }
         _ => Err(JsonRpcError {
             code: -32601,
             message: format!("Unknown method: {}", method),
         }),
     }
+}
+
+pub fn create_run(
+    params: Value,
+    provider: &impl ModelProvider,
+) -> Result<HandlerOutput, JsonRpcError> {
+    let run_id = format!("run_{}", Uuid::new_v4().simple());
+    let prompt = params
+        .pointer("/input/text")
+        .and_then(Value::as_str)
+        .unwrap_or("Start Hermes run.");
+    let deltas = provider
+        .stream(ProviderRequest {
+            input: prompt.to_string(),
+        })
+        .map_err(|_| JsonRpcError {
+            code: -32603,
+            message: "Provider stream failed".to_string(),
+        })?;
+    let mut events = deltas
+        .into_iter()
+        .map(|delta| RuntimeEvent::MessageDelta {
+            run_id: run_id.clone(),
+            delta: delta.text,
+        })
+        .collect::<Vec<_>>();
+
+    if let Some(command) = shell_command_from_prompt(prompt) {
+        let tool_call_id = format!("tool_shell_preview_{}", run_id);
+        let approval_id = format!("approval_shell_preview_{}", run_id);
+        events.push(RuntimeEvent::ToolRequested {
+            run_id: run_id.clone(),
+            tool_call_id: tool_call_id.clone(),
+            tool: "shell".to_string(),
+            summary: "Preview shell command".to_string(),
+        });
+        events.push(RuntimeEvent::ApprovalRequired {
+            run_id: run_id.clone(),
+            approval_id,
+            tool_call_id,
+            operation: ToolOperation {
+                tool: "shell".to_string(),
+                command: Some(command),
+                working_directory: Some(".".to_string()),
+                path: None,
+                risk: "executes-command".to_string(),
+            },
+        });
+    } else {
+        events.push(RuntimeEvent::RunCompleted {
+            run_id: run_id.clone(),
+            status: "completed".to_string(),
+        });
+    }
+
+    Ok(HandlerOutput::ResponseWithEvents {
+        response: json!({ "runId": run_id, "status": "running" }),
+        events,
+    })
 }
 
 fn shell_command_from_prompt(prompt: &str) -> Option<String> {
