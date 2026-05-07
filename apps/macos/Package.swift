@@ -8,7 +8,10 @@ let package = Package(
         .executable(name: "HermesAgent", targets: ["HermesAgent"])
     ],
     targets: [
-        .executableTarget(name: "HermesAgent"),
+        .executableTarget(
+            name: "HermesAgent",
+            linkerSettings: [.linkedFramework("Security")]
+        ),
         .testTarget(name: "HermesAgentTests", dependencies: ["HermesAgent"])
     ]
 )

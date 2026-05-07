@@ -2,27 +2,32 @@ import XCTest
 @testable import HermesAgent
 
 final class KeychainStoreTests: XCTestCase {
-    func testSetSecretThrowsUnimplemented() {
+    func testKeychainRoundTrip() throws {
         let store = KeychainStore()
+        let account = "test-\(UUID().uuidString)"
 
-        XCTAssertThrowsError(try store.setSecret("token", account: "OPENAI_API_KEY")) { error in
-            XCTAssertEqual(error as? KeychainStoreError, .unimplemented)
-        }
+        try store.setSecret("sk-test-value", account: account)
+        XCTAssertEqual(try store.getSecret(account: account), "sk-test-value")
+
+        try store.deleteSecret(account: account)
+        XCTAssertNil(try store.getSecret(account: account))
     }
 
-    func testGetSecretThrowsUnimplemented() {
+    func testMissingSecretReturnsNil() throws {
         let store = KeychainStore()
+        let account = "missing-\(UUID().uuidString)"
 
-        XCTAssertThrowsError(try store.getSecret(account: "OPENAI_API_KEY")) { error in
-            XCTAssertEqual(error as? KeychainStoreError, .unimplemented)
-        }
+        XCTAssertNil(try store.getSecret(account: account))
     }
 
-    func testDeleteSecretThrowsUnimplemented() {
+    func testSetSecretReplacesExistingValue() throws {
         let store = KeychainStore()
+        let account = "replace-\(UUID().uuidString)"
 
-        XCTAssertThrowsError(try store.deleteSecret(account: "OPENAI_API_KEY")) { error in
-            XCTAssertEqual(error as? KeychainStoreError, .unimplemented)
-        }
+        try store.setSecret("first", account: account)
+        try store.setSecret("second", account: account)
+
+        XCTAssertEqual(try store.getSecret(account: account), "second")
+        try store.deleteSecret(account: account)
     }
 }
