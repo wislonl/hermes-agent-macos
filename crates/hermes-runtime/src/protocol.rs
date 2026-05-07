@@ -180,6 +180,25 @@ pub enum RuntimeEvent {
         run_id: String,
         delta: String,
     },
+    #[serde(rename = "tool.requested")]
+    ToolRequested {
+        #[serde(rename = "runId")]
+        run_id: String,
+        #[serde(rename = "toolCallId")]
+        tool_call_id: String,
+        tool: String,
+        summary: String,
+    },
+    #[serde(rename = "approval.required")]
+    ApprovalRequired {
+        #[serde(rename = "runId")]
+        run_id: String,
+        #[serde(rename = "approvalId")]
+        approval_id: String,
+        #[serde(rename = "toolCallId")]
+        tool_call_id: String,
+        operation: crate::tools::ToolOperation,
+    },
     #[serde(rename = "run.completed")]
     RunCompleted {
         #[serde(rename = "runId")]

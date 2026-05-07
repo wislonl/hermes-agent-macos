@@ -2,6 +2,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::protocol::{JsonRpcError, RuntimeEvent};
+use crate::tools::ToolOperation;
 
 pub enum HandlerOutput {
     Response(Value),
@@ -27,18 +28,40 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                 .pointer("/input/text")
                 .and_then(Value::as_str)
                 .unwrap_or("Start Hermes run.");
+            let mut events = vec![RuntimeEvent::MessageDelta {
+                run_id: run_id.clone(),
+                delta: format!("Hermes received: {}", prompt),
+            }];
+
+            if prompt.contains("/shell") {
+                events.push(RuntimeEvent::ToolRequested {
+                    run_id: run_id.clone(),
+                    tool_call_id: "tool_shell_preview".to_string(),
+                    tool: "shell".to_string(),
+                    summary: "Preview shell command".to_string(),
+                });
+                events.push(RuntimeEvent::ApprovalRequired {
+                    run_id: run_id.clone(),
+                    approval_id: "approval_shell_preview".to_string(),
+                    tool_call_id: "tool_shell_preview".to_string(),
+                    operation: ToolOperation {
+                        tool: "shell".to_string(),
+                        command: Some("pwd && ls".to_string()),
+                        working_directory: Some(".".to_string()),
+                        path: None,
+                        risk: "executes-command".to_string(),
+                    },
+                });
+            }
+
+            events.push(RuntimeEvent::RunCompleted {
+                run_id: run_id.clone(),
+                status: "completed".to_string(),
+            });
+
             Ok(HandlerOutput::ResponseWithEvents {
                 response: json!({ "runId": run_id, "status": "running" }),
-                events: vec![
-                    RuntimeEvent::MessageDelta {
-                        run_id: run_id.clone(),
-                        delta: format!("Hermes received: {}", prompt),
-                    },
-                    RuntimeEvent::RunCompleted {
-                        run_id,
-                        status: "completed".to_string(),
-                    },
-                ],
+                events,
             })
         }
         _ => Err(JsonRpcError {

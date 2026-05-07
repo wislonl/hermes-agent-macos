@@ -72,6 +72,67 @@ fn run_create_returns_running_response_and_mock_events() {
 }
 
 #[test]
+fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"req_shell","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"/shell preview workspace"},"workspace":{"path":"/Users/example/project"}}}"#,
+    );
+
+    assert_eq!(output.len(), 5);
+    assert_eq!(output[0]["jsonrpc"], "2.0");
+    assert_eq!(output[0]["id"], "req_shell");
+    assert_eq!(output[0]["result"]["status"], "running");
+
+    let run_id = output[0]["result"]["runId"].as_str().unwrap();
+    assert!(run_id.starts_with("run_"));
+
+    assert_eq!(
+        output[1],
+        json!({
+            "event": "message.delta",
+            "runId": run_id,
+            "delta": "Hermes received: /shell preview workspace"
+        })
+    );
+    assert_eq!(
+        output[2],
+        json!({
+            "event": "tool.requested",
+            "runId": run_id,
+            "toolCallId": "tool_shell_preview",
+            "tool": "shell",
+            "summary": "Preview shell command"
+        })
+    );
+    assert_eq!(
+        output[3],
+        json!({
+            "event": "approval.required",
+            "runId": run_id,
+            "approvalId": "approval_shell_preview",
+            "toolCallId": "tool_shell_preview",
+            "operation": {
+                "tool": "shell",
+                "command": "pwd && ls",
+                "workingDirectory": ".",
+                "risk": "executes-command"
+            }
+        })
+    );
+
+    let operation = output[3]["operation"].as_object().unwrap();
+    assert!(!operation.contains_key("path"));
+
+    assert_eq!(
+        output[4],
+        json!({
+            "event": "run.completed",
+            "runId": run_id,
+            "status": "completed"
+        })
+    );
+}
+
+#[test]
 fn malformed_json_returns_parse_error_and_continues() {
     let output = run_runtime(
         r#"not json
