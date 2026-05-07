@@ -9,4 +9,5 @@ fn read_only_operations_do_not_require_approval() {
 fn shell_and_write_operations_require_approval() {
     assert!(requires_approval(&Risk::ExecutesCommand));
     assert!(requires_approval(&Risk::WritesFiles));
+    assert!(requires_approval(&Risk::NetworkSideEffect));
 }

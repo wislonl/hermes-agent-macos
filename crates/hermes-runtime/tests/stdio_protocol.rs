@@ -77,7 +77,7 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
         r#"{"jsonrpc":"2.0","id":"req_shell","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"/shell preview workspace"},"workspace":{"path":"/Users/example/project"}}}"#,
     );
 
-    assert_eq!(output.len(), 5);
+    assert_eq!(output.len(), 4);
     assert_eq!(output[0]["jsonrpc"], "2.0");
     assert_eq!(output[0]["id"], "req_shell");
     assert_eq!(output[0]["result"]["status"], "running");
@@ -122,14 +122,44 @@ fn run_create_with_shell_prompt_emits_tool_approval_events_in_order() {
     let operation = output[3]["operation"].as_object().unwrap();
     assert!(!operation.contains_key("path"));
 
+    assert!(!output
+        .iter()
+        .any(|message| message["event"] == "run.completed"));
+}
+
+#[test]
+fn run_create_with_shell_mentioned_later_does_not_request_approval() {
+    let output = run_runtime(
+        r#"{"jsonrpc":"2.0","id":"req_shell_text","method":"run.create","params":{"sessionId":"session_123","agentProfileId":"agent_hermes","input":{"type":"text","text":"Explain why /shell needs approval."},"workspace":{"path":"/Users/example/project"}}}"#,
+    );
+
+    assert_eq!(output.len(), 3);
+    assert_eq!(output[0]["jsonrpc"], "2.0");
+    assert_eq!(output[0]["id"], "req_shell_text");
+    assert_eq!(output[0]["result"]["status"], "running");
+
+    let run_id = output[0]["result"]["runId"].as_str().unwrap();
+    assert!(run_id.starts_with("run_"));
+
     assert_eq!(
-        output[4],
+        output[1],
+        json!({
+            "event": "message.delta",
+            "runId": run_id,
+            "delta": "Hermes received: Explain why /shell needs approval."
+        })
+    );
+    assert_eq!(
+        output[2],
         json!({
             "event": "run.completed",
             "runId": run_id,
             "status": "completed"
         })
     );
+    assert!(!output
+        .iter()
+        .any(|message| message["event"] == "approval.required"));
 }
 
 #[test]

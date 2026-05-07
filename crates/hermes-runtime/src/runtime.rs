@@ -33,7 +33,7 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                 delta: format!("Hermes received: {}", prompt),
             }];
 
-            if prompt.contains("/shell") {
+            if prompt.trim().starts_with("/shell") {
                 events.push(RuntimeEvent::ToolRequested {
                     run_id: run_id.clone(),
                     tool_call_id: "tool_shell_preview".to_string(),
@@ -52,12 +52,12 @@ pub fn handle(method: &str, params: Value) -> Result<HandlerOutput, JsonRpcError
                         risk: "executes-command".to_string(),
                     },
                 });
+            } else {
+                events.push(RuntimeEvent::RunCompleted {
+                    run_id: run_id.clone(),
+                    status: "completed".to_string(),
+                });
             }
-
-            events.push(RuntimeEvent::RunCompleted {
-                run_id: run_id.clone(),
-                status: "completed".to_string(),
-            });
 
             Ok(HandlerOutput::ResponseWithEvents {
                 response: json!({ "runId": run_id, "status": "running" }),
