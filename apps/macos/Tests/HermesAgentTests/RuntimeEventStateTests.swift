@@ -51,6 +51,30 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.toolCalls.last?.approvalId, "approval_1")
     }
 
+    func testDuplicateApprovalRequiredUpdatesExistingApprovalRequest() {
+        let state = AppState()
+
+        state.apply(event: .approvalRequired(
+            runId: "run_1",
+            approvalId: "approval_1",
+            toolCallId: "tool_1",
+            command: "pwd"
+        ))
+        state.resolveApproval(id: "approval_1", decision: .denied)
+        state.apply(event: .approvalRequired(
+            runId: "run_1",
+            approvalId: "approval_1",
+            toolCallId: "tool_1",
+            command: "ls"
+        ))
+
+        XCTAssertEqual(state.approvals, [
+            ApprovalRequest(id: "approval_1", command: "ls", decision: .denied)
+        ])
+        XCTAssertEqual(state.toolCalls.count, 1)
+        XCTAssertEqual(state.toolCalls.last?.detail, "ls")
+    }
+
     func testToolRequestedDoesNotDuplicateExistingApprovalToolCall() {
         let state = AppState()
 
@@ -128,14 +152,25 @@ final class RuntimeEventStateTests: XCTestCase {
         XCTAssertEqual(state.toolCalls.last?.title, "shell")
         XCTAssertEqual(state.toolCalls.last?.detail, "pwd && ls")
         XCTAssertEqual(state.toolCalls.last?.requiresApproval, true)
-        XCTAssertEqual(state.approvals, [
-            ApprovalRequest(
-                id: "approval_shell_preview_run_preview",
-                command: "pwd && ls",
-                decision: nil
-            )
-        ])
+        XCTAssertEqual(state.approvals.count, 1)
+        XCTAssertEqual(state.approvals.last?.command, "pwd && ls")
+        XCTAssertNil(state.approvals.last?.decision)
         XCTAssertEqual(state.draft, "")
+    }
+
+    func testSubmitDraftWithMultipleShellPromptsCreatesDistinctApprovalRequests() {
+        let state = AppState()
+
+        state.draft = "/shell pwd"
+        state.submitDraft()
+        state.draft = "/shell ls"
+        state.submitDraft()
+
+        XCTAssertEqual(state.toolCalls.count, 2)
+        XCTAssertEqual(state.approvals.count, 2)
+        XCTAssertNotEqual(state.toolCalls[0].id, state.toolCalls[1].id)
+        XCTAssertNotEqual(state.approvals[0].id, state.approvals[1].id)
+        XCTAssertEqual(state.approvals.map(\.command), ["pwd", "ls"])
     }
 
     func testSubmitDraftWithShellMentionLaterDoesNotCreateApprovalRequest() {

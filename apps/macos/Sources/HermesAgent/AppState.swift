@@ -47,7 +47,15 @@ final class AppState {
                 ))
             }
         case .approvalRequired(_, let approvalId, let toolCallId, let command):
-            approvals.append(ApprovalRequest(id: approvalId, command: command, decision: nil))
+            if let index = approvals.firstIndex(where: { $0.id == approvalId }) {
+                approvals[index] = ApprovalRequest(
+                    id: approvalId,
+                    command: command,
+                    decision: approvals[index].decision
+                )
+            } else {
+                approvals.append(ApprovalRequest(id: approvalId, command: command, decision: nil))
+            }
             if let index = toolCalls.firstIndex(where: { $0.id == toolCallId }) {
                 toolCalls[index].detail = command
                 toolCalls[index].requiresApproval = true
@@ -77,16 +85,19 @@ final class AppState {
 
         messages.append(ChatMessage(id: UUID(), author: .user, text: trimmed))
         if let command = shellCommand(from: trimmed) {
+            let runId = "run_preview_\(UUID().uuidString)"
+            let toolCallId = "tool_shell_preview_\(runId)"
+            let approvalId = "approval_shell_preview_\(runId)"
             apply(event: .toolRequested(
-                runId: "run_preview",
-                toolCallId: "tool_shell_preview_run_preview",
+                runId: runId,
+                toolCallId: toolCallId,
                 tool: "shell",
                 summary: "Preview shell command"
             ))
             apply(event: .approvalRequired(
-                runId: "run_preview",
-                approvalId: "approval_shell_preview_run_preview",
-                toolCallId: "tool_shell_preview_run_preview",
+                runId: runId,
+                approvalId: approvalId,
+                toolCallId: toolCallId,
                 command: command
             ))
         } else {
