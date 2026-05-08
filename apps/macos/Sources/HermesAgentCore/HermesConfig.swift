@@ -14,6 +14,7 @@ enum HermesConfig {
             .replacingOccurrences(of: "\r\n", with: "")
             .replacingOccurrences(of: "\n", with: "")
             .replacingOccurrences(of: "\r", with: "")
+        try ensureDirectory(for: envPath)
         var lines = envLines(path: envPath)
         let prefix = key + "="
         var found = false
@@ -64,6 +65,7 @@ enum HermesConfig {
     // MARK: - config.yaml
 
     static func writeConfigModel(modelId: String, provider: String, configPath: String = defaultConfigPath) throws {
+        try ensureDirectory(for: configPath)
         var content: String
         if let existing = try? String(contentsOfFile: configPath, encoding: .utf8) {
             content = existing
@@ -124,5 +126,10 @@ enum HermesConfig {
         guard value.count > 8 else { return String(repeating: "•", count: value.count) }
         let visible = value.suffix(4)
         return "••••\(visible)"
+    }
+
+    private static func ensureDirectory(for filePath: String) throws {
+        let dir = (filePath as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     }
 }

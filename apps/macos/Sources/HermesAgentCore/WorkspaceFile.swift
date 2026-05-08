@@ -24,6 +24,17 @@ final class FileNode: Identifiable {
         children = Self.directChildren(of: url)
     }
 
+    /// Non-blocking: reads children on a background thread, then updates on MainActor.
+    func loadChildrenIfNeededAsync() {
+        guard isDirectory, !isLoaded else { return }
+        isLoaded = true
+        let url = self.url
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let loaded = FileNode.directChildren(of: url)
+            await MainActor.run { self?.children = loaded }
+        }
+    }
+
     static func loadRoots(at path: String) -> [FileNode] {
         directChildren(of: URL(fileURLWithPath: path))
     }

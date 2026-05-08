@@ -27,3 +27,4 @@ target/
 # Logs
 *.log
 
+.claude/

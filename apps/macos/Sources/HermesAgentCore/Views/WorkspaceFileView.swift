@@ -5,6 +5,7 @@ struct WorkspaceFileView: View {
     @State private var roots: [FileNode] = []
     @State private var isLoading = false
     @State private var lastInserted: String? = nil
+    @State private var reloadTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -65,15 +66,17 @@ struct WorkspaceFileView: View {
     }
 
     private func reload() {
+        reloadTask?.cancel()
         guard !state.workspacePath.isEmpty else { return }
         isLoading = true
         let path = state.workspacePath
-        Task.detached(priority: .userInitiated) {
-            let nodes = FileNode.loadRoots(at: path)
-            await MainActor.run {
-                roots = nodes
-                isLoading = false
-            }
+        reloadTask = Task {
+            let nodes = await Task.detached(priority: .userInitiated) {
+                FileNode.loadRoots(at: path)
+            }.value
+            guard !Task.isCancelled else { return }
+            roots = nodes
+            isLoading = false
         }
     }
 }
@@ -95,7 +98,7 @@ private struct FileRowView: View {
                 rowLabel
             }
             .onChange(of: isExpanded) { _, expanded in
-                if expanded { node.loadChildrenIfNeeded() }
+                if expanded { node.loadChildrenIfNeededAsync() }
             }
         } else {
             rowLabel

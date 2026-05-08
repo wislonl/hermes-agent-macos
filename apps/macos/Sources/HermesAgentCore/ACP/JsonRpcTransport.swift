@@ -3,6 +3,58 @@ import Foundation
 // Bidirectional newline-delimited JSON-RPC 2.0 over a child process's stdio.
 // Both peers may originate requests; responses are correlated by id.
 
+// MARK: - Parsing helpers (internal for testability)
+
+enum JsonRpcParsed {
+    case request(id: JsonRpcId, method: String, params: Data)
+    case notification(method: String, params: Data)
+    case response(id: JsonRpcId, result: Data)
+    case remoteError(id: JsonRpcId, code: Int, message: String)
+    case missingResult(id: JsonRpcId)
+    case malformed
+}
+
+func parseJsonRpcLine(_ data: Data) -> JsonRpcParsed {
+    guard let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        return .malformed
+    }
+    let id: JsonRpcId? = {
+        switch raw["id"] {
+        case let v as Int:    return .int(v)
+        case let v as String: return .string(v)
+        default:              return nil
+        }
+    }()
+    let serialize: (Any) -> Data = {
+        (try? JSONSerialization.data(withJSONObject: $0)) ?? Data("{}".utf8)
+    }
+    if let method = raw["method"] as? String {
+        let params = serialize(raw["params"] ?? [:])
+        if let id { return .request(id: id, method: method, params: params) }
+        return .notification(method: method, params: params)
+    }
+    guard let id else { return .malformed }
+    if let errorObj = raw["error"] as? [String: Any] {
+        let code    = (errorObj["code"]    as? Int)    ?? -1
+        let message = (errorObj["message"] as? String) ?? "Unknown error"
+        return .remoteError(id: id, code: code, message: message)
+    }
+    if let result = raw["result"] { return .response(id: id, result: serialize(result)) }
+    return .missingResult(id: id)
+}
+
+/// Appends `chunk` to `buffer`, splits on newlines, returns complete non-empty lines.
+func splitNewlineDelimited(buffer: inout Data, chunk: Data) -> [Data] {
+    buffer.append(chunk)
+    var lines: [Data] = []
+    while let nl = buffer.firstIndex(of: 0x0A) {
+        let line = buffer.subdata(in: 0..<nl)
+        buffer.removeSubrange(0...nl)
+        if !line.isEmpty { lines.append(line) }
+    }
+    return lines
+}
+
 enum JsonRpcTransportError: Error, LocalizedError {
     case processNotRunning
     case processFailedToStart(String)
@@ -166,11 +218,8 @@ actor JsonRpcTransport {
 
     // Called from a Foundation-managed queue via Task; actor serialises access.
     fileprivate func processIncoming(_ data: Data) {
-        readBuffer.append(data)
-        while let nl = readBuffer.firstIndex(of: 0x0A) {
-            let lineData = readBuffer.subdata(in: 0..<nl)
-            readBuffer.removeSubrange(0...nl)
-            if !lineData.isEmpty { handleLine(lineData) }
+        for line in splitNewlineDelimited(buffer: &readBuffer, chunk: data) {
+            handleLine(line)
         }
     }
 
@@ -227,48 +276,24 @@ actor JsonRpcTransport {
     }
 
     private func handleLine(_ data: Data) {
-        guard let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
-
-        let id: JsonRpcId? = {
-            switch raw["id"] {
-            case let v as Int: return .int(v)
-            case let v as String: return .string(v)
-            default: return nil
-            }
-        }()
-
-        if let method = raw["method"] as? String {
-            let paramsData = serialize(raw["params"] ?? [:])
-            if let id = id {
-                requestHandler?(id, method, paramsData)
-            } else {
-                notificationHandler?(method, paramsData)
-            }
-            return
+        switch parseJsonRpcLine(data) {
+        case .request(let id, let method, let params):
+            requestHandler?(id, method, params)
+        case .notification(let method, let params):
+            notificationHandler?(method, params)
+        case .response(let id, let result):
+            pending.removeValue(forKey: id)?.resume(returning: result)
+        case .remoteError(let id, let code, let message):
+            pending.removeValue(forKey: id)?.resume(
+                throwing: JsonRpcTransportError.remoteError(code: code, message: message)
+            )
+        case .missingResult(let id):
+            pending.removeValue(forKey: id)?.resume(
+                throwing: JsonRpcTransportError.missingResult
+            )
+        case .malformed:
+            break
         }
-
-        if let id = id {
-            handleResponse(id: id, raw: raw)
-        }
-    }
-
-    private func handleResponse(id: JsonRpcId, raw: [String: Any]) {
-        guard let cont = pending.removeValue(forKey: id) else { return }
-        if let errorObj = raw["error"] as? [String: Any] {
-            let code = (errorObj["code"] as? Int) ?? -1
-            let message = (errorObj["message"] as? String) ?? "Unknown error"
-            cont.resume(throwing: JsonRpcTransportError.remoteError(code: code, message: message))
-            return
-        }
-        guard let result = raw["result"] else {
-            cont.resume(throwing: JsonRpcTransportError.missingResult)
-            return
-        }
-        cont.resume(returning: serialize(result))
-    }
-
-    private func serialize(_ value: Any) -> Data {
-        (try? JSONSerialization.data(withJSONObject: value)) ?? Data("{}".utf8)
     }
 }
 

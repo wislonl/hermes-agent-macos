@@ -23,9 +23,6 @@ public struct WorkbenchView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                modelIndicator
-            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) { showInspector.toggle() }
@@ -40,47 +37,7 @@ public struct WorkbenchView: View {
                 state.resolveApproval(optionId: decision)
             }
         }
-        .sheet(isPresented: $showModelSetup) {
-            ModelSetupView(state: state)
-        }
         .onAppear { state.startIfNeeded() }
-    }
-
-    @ViewBuilder
-    private var modelIndicator: some View {
-        Button {
-            showModelSetup = true
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "cpu")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(currentModelName)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                Image(systemName: "chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(.controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-        .help("Switch model")
-    }
-
-    private var currentModelName: String {
-        if state.isRestarting { return "Restarting…" }
-        guard let id = state.currentModelId else {
-            return state.connectionState == .ready ? "No model" : "Connecting…"
-        }
-        if let model = state.availableModels.first(where: { $0.id == id }) {
-            return model.name
-        }
-        // Trim long IDs like "anthropic/claude-sonnet-4-6" → "claude-sonnet-4-6"
-        return id.components(separatedBy: "/").last ?? id
     }
 }
 

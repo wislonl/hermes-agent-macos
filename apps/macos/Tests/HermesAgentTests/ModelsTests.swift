@@ -64,4 +64,37 @@ struct ModelsTests {
         let s = SessionSummary(id: "1", title: "t", cwd: "/", updatedAt: nil)
         #expect(s.displayCwd == "~")
     }
+
+    // MARK: - Additional strippingHermesMarkup edge cases
+
+    @Test("strips multiple think blocks")
+    func stripsMultipleThinkBlocks() {
+        let raw = "<think>a</think>mid<think>b</think>end"
+        #expect(raw.strippingHermesMarkup() == "midend")
+    }
+
+    @Test("whitespace-only result returns empty after trimming")
+    func whitespaceOnlyResult() {
+        let raw = "<think>reasoning</think>   "
+        #expect(raw.strippingHermesMarkup() == "")
+    }
+
+    @Test("empty string returns empty")
+    func emptyStringUnchanged() {
+        #expect("".strippingHermesMarkup() == "")
+    }
+
+    // MARK: - Additional SessionSummary edge cases
+
+    @Test("displayTitle with whitespace-only inside think returns fallback")
+    func displayTitleWhitespaceInsideThink() {
+        let s = SessionSummary(id: "zzzz5555aaaa", title: "<think>   </think>", cwd: "/", updatedAt: nil)
+        #expect(s.displayTitle == "Session zzzz5555")
+    }
+
+    @Test("displayTitle with text after whitespace-padded think close")
+    func displayTitleTextAfterWhitespacedClose() {
+        let s = SessionSummary(id: "1", title: "<think>x</think>  Real Title  ", cwd: "/", updatedAt: nil)
+        #expect(s.displayTitle == "Real Title")
+    }
 }
