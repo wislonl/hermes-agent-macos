@@ -189,12 +189,6 @@ final class AppState: NSObject {
         }
     }
 
-    func applyModelPreset(_ preset: ModelPreset, apiKey: String) async throws {
-        try HermesConfig.writeEnvKey(preset.envKey, value: apiKey)
-        try HermesConfig.writeConfigModel(modelId: preset.modelId, provider: preset.provider)
-        await restartRuntime()
-    }
-
     func restartRuntime() async {
         isRestarting = true
         await client?.stop()

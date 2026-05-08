@@ -41,7 +41,7 @@ struct ModelSetupView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Apply & Restart") {
+                Button(applyButtonLabel) {
                     Task { await apply() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -139,9 +139,15 @@ struct ModelSetupView: View {
             switch validation {
             case .idle:
                 if let existing = configuredKeys[selectedPreset.envKey] {
-                    Label("Already configured: \(HermesConfig.maskedKey(existing))", systemImage: "checkmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(.green)
+                    if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Label("Will switch to \(selectedPreset.displayName) using existing key (\(HermesConfig.maskedKey(existing)))", systemImage: "arrow.trianglehead.2.clockwise")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Label("Will replace existing key (\(HermesConfig.maskedKey(existing)))", systemImage: "checkmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
                 } else {
                     Text("Enter key then tap Test to verify before applying.")
                         .font(.caption)
@@ -210,11 +216,18 @@ struct ModelSetupView: View {
     // MARK: - Helpers
 
     private var canApply: Bool {
-        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !isApplying else { return false }
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         if !key.isEmpty { return true }
-        // Allow applying with empty key if key is already configured
         return configuredKeys[selectedPreset.envKey] != nil
+    }
+
+    private var applyButtonLabel: String {
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if key.isEmpty && configuredKeys[selectedPreset.envKey] != nil {
+            return "Switch Model & Restart"
+        }
+        return "Apply & Restart"
     }
 
     private var configuredPresets: [ModelPreset] {
