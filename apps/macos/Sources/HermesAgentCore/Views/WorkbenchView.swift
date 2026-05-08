@@ -1,11 +1,13 @@
 import SwiftUI
 
-struct WorkbenchView: View {
-    @Bindable var state: AppState
+public struct WorkbenchView: View {
+    @Bindable public var state: AppState
     @State private var showInspector = true
     @State private var showModelSetup = false
 
-    var body: some View {
+    public init(state: AppState) { self.state = state }
+
+    public var body: some View {
         HStack(spacing: 0) {
             NavigationSplitView {
                 SidebarView(state: state)

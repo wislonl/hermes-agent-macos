@@ -3,7 +3,7 @@ import Observation
 
 @MainActor
 @Observable
-final class AppState: NSObject {
+public final class AppState: NSObject {
     enum ConnectionState: Equatable {
         case starting
         case ready
@@ -35,8 +35,8 @@ final class AppState: NSObject {
     @ObservationIgnored private var messageCache: [String: [ChatMessage]] = [:]
     @ObservationIgnored private var toolCallCache: [String: [ToolCallView]] = [:]
 
-    init(workspacePath: String = AppState.defaultWorkspacePath,
-         executableURL: URL? = HermesLocator.findExecutable()) {
+    public init(workspacePath: String = AppState.defaultWorkspacePath,
+                executableURL: URL? = HermesLocator.findExecutable()) {
         self.workspacePath = workspacePath
         self.executableURL = executableURL
         super.init()
@@ -71,7 +71,7 @@ final class AppState: NSObject {
         }
     }
 
-    func shutdown() {
+    public func shutdown() {
         Task { [client] in await client?.stop() }
     }
 
@@ -99,7 +99,7 @@ final class AppState: NSObject {
         }
     }
 
-    func startNewSession() async {
+    public func startNewSession() async {
         guard let client else { return }
         saveCurrentSessionToCache()
         do {
@@ -380,7 +380,7 @@ extension AppState: ACPClientDelegate {
 extension AppState {
     // Prefer the user's home directory over whatever cwd the process inherits
     // (bundled .app launched from Finder gets cwd = "/").
-    nonisolated static var defaultWorkspacePath: String {
+    public nonisolated static var defaultWorkspacePath: String {
         let cwd = FileManager.default.currentDirectoryPath
         return cwd == "/" ? NSHomeDirectory() : cwd
     }
@@ -388,8 +388,8 @@ extension AppState {
 
 // MARK: - Locating the hermes executable
 
-enum HermesLocator {
-    static func findExecutable(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL? {
+public enum HermesLocator {
+    public static func findExecutable(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL? {
         if let explicit = environment["HERMES_EXECUTABLE"], !explicit.isEmpty {
             let url = URL(fileURLWithPath: explicit)
             if FileManager.default.isExecutableFile(atPath: url.path) { return url }

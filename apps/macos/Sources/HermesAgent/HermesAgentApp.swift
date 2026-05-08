@@ -1,4 +1,5 @@
 import SwiftUI
+import HermesAgentCore
 
 @main
 struct HermesAgentApp: App {

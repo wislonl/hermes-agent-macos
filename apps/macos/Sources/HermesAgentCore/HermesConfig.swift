@@ -1,14 +1,14 @@
 import Foundation
 
 enum HermesConfig {
-    private static var hermesDir: String { NSHomeDirectory() + "/.hermes" }
-    private static var envPath: String { hermesDir + "/.env" }
-    private static var configPath: String { hermesDir + "/config.yaml" }
+    static var hermesDir: String { NSHomeDirectory() + "/.hermes" }
+    static var defaultEnvPath: String { hermesDir + "/.env" }
+    static var defaultConfigPath: String { hermesDir + "/config.yaml" }
 
     // MARK: - .env
 
-    static func writeEnvKey(_ key: String, value: String) throws {
-        var lines = envLines()
+    static func writeEnvKey(_ key: String, value: String, envPath: String = defaultEnvPath) throws {
+        var lines = envLines(path: envPath)
         let prefix = key + "="
         var found = false
         for i in lines.indices {
@@ -23,8 +23,8 @@ enum HermesConfig {
         try lines.joined(separator: "\n").write(toFile: envPath, atomically: true, encoding: .utf8)
     }
 
-    static func removeEnvKey(_ key: String) throws {
-        var lines = envLines()
+    static func removeEnvKey(_ key: String, envPath: String = defaultEnvPath) throws {
+        var lines = envLines(path: envPath)
         let prefix = key + "="
         for i in lines.indices {
             let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
@@ -36,9 +36,9 @@ enum HermesConfig {
     }
 
     // Returns [envVarName: rawValue] for all non-commented, non-empty assignments.
-    static func readConfiguredKeys() -> [String: String] {
+    static func readConfiguredKeys(envPath: String = defaultEnvPath) -> [String: String] {
         var result: [String: String] = [:]
-        for line in envLines() {
+        for line in envLines(path: envPath) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard !trimmed.hasPrefix("#"), !trimmed.isEmpty else { continue }
             let parts = trimmed.split(separator: "=", maxSplits: 1)
@@ -51,13 +51,13 @@ enum HermesConfig {
         return result
     }
 
-    private static func envLines() -> [String] {
-        (try? String(contentsOfFile: envPath, encoding: .utf8))?.components(separatedBy: "\n") ?? []
+    static func envLines(path: String = defaultEnvPath) -> [String] {
+        (try? String(contentsOfFile: path, encoding: .utf8))?.components(separatedBy: "\n") ?? []
     }
 
     // MARK: - config.yaml
 
-    static func writeConfigModel(modelId: String, provider: String) throws {
+    static func writeConfigModel(modelId: String, provider: String, configPath: String = defaultConfigPath) throws {
         var content: String
         if let existing = try? String(contentsOfFile: configPath, encoding: .utf8) {
             content = existing
