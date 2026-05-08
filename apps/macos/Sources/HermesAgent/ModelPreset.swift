@@ -1,8 +1,9 @@
 import Foundation
 
 enum ProviderGroup: String, CaseIterable {
-    case claude   = "Claude (Anthropic)"
-    case openai   = "GPT / OpenAI"
+    case anthropicDirect = "Claude (Direct API)"
+    case claude          = "Claude (via OpenRouter)"
+    case openai          = "GPT / OpenAI"
     case gemini   = "Gemini (Google)"
     case deepseek = "DeepSeek"
     case grok     = "Grok (xAI)"
@@ -27,7 +28,42 @@ struct ModelPreset: Identifiable, Hashable {
 extension ModelPreset {
     static let all: [ModelPreset] = [
 
-        // ── Claude ────────────────────────────────────────────────────
+        // ── Claude Direct (Anthropic API) ─────────────────────────────
+        ModelPreset(
+            id: "anthropic-sonnet-4-6",
+            displayName: "Claude Sonnet 4.6",
+            group: .anthropicDirect,
+            provider: "anthropic",
+            modelId: "claude-sonnet-4-6",
+            envKey: "ANTHROPIC_TOKEN",
+            keyHint: "sk-ant-...",
+            validationURL: nil,
+            useQueryAuth: false
+        ),
+        ModelPreset(
+            id: "anthropic-opus-4-7",
+            displayName: "Claude Opus 4.7",
+            group: .anthropicDirect,
+            provider: "anthropic",
+            modelId: "claude-opus-4-7",
+            envKey: "ANTHROPIC_TOKEN",
+            keyHint: "sk-ant-...",
+            validationURL: nil,
+            useQueryAuth: false
+        ),
+        ModelPreset(
+            id: "anthropic-haiku-4-5",
+            displayName: "Claude Haiku 4.5",
+            group: .anthropicDirect,
+            provider: "anthropic",
+            modelId: "claude-haiku-4-5-20251001",
+            envKey: "ANTHROPIC_TOKEN",
+            keyHint: "sk-ant-...",
+            validationURL: nil,
+            useQueryAuth: false
+        ),
+
+        // ── Claude (via OpenRouter) ───────────────────────────────────
         ModelPreset(
             id: "or-claude-sonnet-4-6",
             displayName: "Claude Sonnet 4.6",

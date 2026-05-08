@@ -251,6 +251,10 @@ struct ModelSetupView: View {
     private func testKey() async {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }
+        guard selectedPreset.validationURL != nil else {
+            validation = .valid
+            return
+        }
         validation = .testing
         let ok = await HermesConfig.validateKey(preset: selectedPreset, apiKey: key)
         validation = ok ? .valid : .invalid("Key rejected (401/403). Check and try again.")
