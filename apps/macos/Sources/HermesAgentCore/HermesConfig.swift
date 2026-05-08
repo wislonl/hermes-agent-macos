@@ -8,18 +8,24 @@ enum HermesConfig {
     // MARK: - .env
 
     static func writeEnvKey(_ key: String, value: String, envPath: String = defaultEnvPath) throws {
+        // Strip newlines to prevent env-file injection (a key value containing \n
+        // would create extra lines that parse as separate assignments).
+        let safeValue = value
+            .replacingOccurrences(of: "\r\n", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
         var lines = envLines(path: envPath)
         let prefix = key + "="
         var found = false
         for i in lines.indices {
             let trimmed = lines[i].trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix(prefix) || trimmed.hasPrefix("# " + prefix) || trimmed.hasPrefix("#" + prefix) {
-                lines[i] = "\(key)=\(value)"
+                lines[i] = "\(key)=\(safeValue)"
                 found = true
                 break
             }
         }
-        if !found { lines.append("\(key)=\(value)") }
+        if !found { lines.append("\(key)=\(safeValue)") }
         try lines.joined(separator: "\n").write(toFile: envPath, atomically: true, encoding: .utf8)
     }
 

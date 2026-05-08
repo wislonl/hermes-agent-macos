@@ -211,7 +211,7 @@ public final class AppState: NSObject {
     func insertFileReference(_ absolutePath: String) {
         let base = workspacePath
         let rel: String
-        if absolutePath.hasPrefix(base + "/") {
+        if !base.isEmpty && absolutePath.hasPrefix(base + "/") {
             rel = String(absolutePath.dropFirst(base.count + 1))
         } else {
             rel = absolutePath

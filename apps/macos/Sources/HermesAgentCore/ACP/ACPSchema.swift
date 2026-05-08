@@ -143,6 +143,16 @@ struct ACPPromptResult: Decodable {
 struct ACPSessionUpdateNotification: Decodable {
     let sessionId: String
     let update: ACPSessionUpdate
+
+    private enum TopKeys: String, CodingKey { case sessionId }
+
+    // ACPSessionUpdate reads from the top-level params object (not a nested key),
+    // so we must pass the same decoder rather than a sub-decoder for an "update" key.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: TopKeys.self)
+        sessionId = try container.decode(String.self, forKey: .sessionId)
+        update = try ACPSessionUpdate(from: decoder)
+    }
 }
 
 enum ACPSessionUpdate: Decodable {
