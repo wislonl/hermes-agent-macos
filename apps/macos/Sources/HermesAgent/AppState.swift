@@ -25,6 +25,7 @@ final class AppState: NSObject {
 
     var draft: String = ""
     var isAwaitingResponse: Bool = false
+    var isRestarting: Bool = false
     var workspacePath: String
 
     @ObservationIgnored private var client: ACPClient?
@@ -186,6 +187,31 @@ final class AppState: NSObject {
         if let updated = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted) {
             try? updated.write(to: URL(fileURLWithPath: filePath))
         }
+    }
+
+    func applyModelPreset(_ preset: ModelPreset, apiKey: String) async throws {
+        try HermesConfig.writeEnvKey(preset.envKey, value: apiKey)
+        try HermesConfig.writeConfigModel(modelId: preset.modelId, provider: preset.provider)
+        await restartRuntime()
+    }
+
+    func restartRuntime() async {
+        isRestarting = true
+        await client?.stop()
+        client = nil
+        didStart = false
+        connectionState = .starting
+        statusMessage = "Restarting Hermes…"
+        sessions = []
+        currentSessionId = nil
+        messages = []
+        toolCalls = []
+        availableModels = []
+        currentModelId = nil
+        messageCache = [:]
+        toolCallCache = [:]
+        startIfNeeded()
+        isRestarting = false
     }
 
     func clearToolCalls() {

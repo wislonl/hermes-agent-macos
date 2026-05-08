@@ -2,27 +2,49 @@ import SwiftUI
 
 struct InspectorView: View {
     @Bindable var state: AppState
+    @State private var showModelSetup = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            modelSection
+        ZStack {
+            VStack(alignment: .leading, spacing: 16) {
+                modelSection
+                Divider()
+                toolCallsSection
+                Spacer()
+                connectionFooter
+            }
+            .padding()
+            .frame(minWidth: 240)
+            .disabled(state.isRestarting)
+            .blur(radius: state.isRestarting ? 2 : 0)
 
-            Divider()
-
-            toolCallsSection
-
-            Spacer()
-
-            connectionFooter
+            if state.isRestarting {
+                restartingOverlay
+            }
         }
-        .padding()
-        .frame(minWidth: 240)
     }
+
+    // MARK: - Model section
 
     @ViewBuilder
     private var modelSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Model").font(.headline)
+            HStack {
+                Text("Model").font(.headline)
+                Spacer()
+                Button {
+                    showModelSetup = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .help("Add model / change API key")
+            }
+            .sheet(isPresented: $showModelSetup) {
+                ModelSetupView(state: state)
+            }
+
             if state.availableModels.isEmpty {
                 Text("Model list will appear once a session is active.")
                     .font(.caption)
@@ -52,6 +74,24 @@ struct InspectorView: View {
             }
         }
     }
+
+    // MARK: - Restarting overlay
+
+    private var restartingOverlay: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Restarting Hermes…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(8)
+    }
+
+    // MARK: - Tool calls section
 
     @ViewBuilder
     private var toolCallsSection: some View {
@@ -100,6 +140,8 @@ struct InspectorView: View {
         }
     }
 
+    // MARK: - Footer
+
     @ViewBuilder
     private var connectionFooter: some View {
         HStack(spacing: 6) {
@@ -115,8 +157,8 @@ struct InspectorView: View {
 
     private var connectionColor: Color {
         switch state.connectionState {
-        case .ready: return .green
-        case .starting: return .yellow
+        case .ready:                return .green
+        case .starting:             return .yellow
         case .failed, .disconnected: return .red
         }
     }
