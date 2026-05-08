@@ -5,48 +5,41 @@ struct SidebarView: View {
     @State private var renaming: SessionSummary? = nil
     @State private var renameText: String = ""
     @State private var sessionToDelete: SessionSummary? = nil
+    @State private var sidebarTab: SidebarTab = .sessions
+
+    enum SidebarTab { case sessions, files }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Sessions").font(.headline)
-                Spacer()
-                Button {
-                    Task { await state.startNewSession() }
-                } label: {
-                    Image(systemName: "square.and.pencil")
+            // Tab switcher + action button
+            HStack(spacing: 0) {
+                Picker("", selection: $sidebarTab) {
+                    Text("Sessions").tag(SidebarTab.sessions)
+                    Text("Files").tag(SidebarTab.files)
                 }
-                .buttonStyle(.borderless)
-                .help("New session")
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                Spacer()
+
+                if sidebarTab == .sessions {
+                    Button {
+                        Task { await state.startNewSession() }
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("New session")
+                }
             }
             .padding(.horizontal)
             .padding(.top, 12)
             .padding(.bottom, 8)
 
-            if state.sessions.isEmpty {
-                ContentUnavailableView(
-                    "No prior sessions",
-                    systemImage: "tray",
-                    description: Text("Start chatting to create one.")
-                )
-                .padding(.top, 24)
-                Spacer()
+            if sidebarTab == .sessions {
+                sessionsContent
             } else {
-                List(selection: Binding(
-                    get: { state.currentSessionId },
-                    set: { newValue in
-                        guard let id = newValue,
-                              let session = state.sessions.first(where: { $0.id == id })
-                        else { return }
-                        Task { await state.switchToSession(id, cwd: session.cwd) }
-                    }
-                )) {
-                    ForEach(state.sessions) { session in
-                        sessionRow(session)
-                            .tag(session.id)
-                    }
-                }
-                .listStyle(.sidebar)
+                WorkspaceFileView(state: state)
             }
         }
         .navigationTitle("Hermes")
@@ -73,6 +66,35 @@ struct SidebarView: View {
                 },
                 onCancel: { renaming = nil }
             )
+        }
+    }
+
+    @ViewBuilder
+    private var sessionsContent: some View {
+        if state.sessions.isEmpty {
+            ContentUnavailableView(
+                "No prior sessions",
+                systemImage: "tray",
+                description: Text("Start chatting to create one.")
+            )
+            .padding(.top, 24)
+            Spacer()
+        } else {
+            List(selection: Binding(
+                get: { state.currentSessionId },
+                set: { newValue in
+                    guard let id = newValue,
+                          let session = state.sessions.first(where: { $0.id == id })
+                    else { return }
+                    Task { await state.switchToSession(id, cwd: session.cwd) }
+                }
+            )) {
+                ForEach(state.sessions) { session in
+                    sessionRow(session)
+                        .tag(session.id)
+                }
+            }
+            .listStyle(.sidebar)
         }
     }
 

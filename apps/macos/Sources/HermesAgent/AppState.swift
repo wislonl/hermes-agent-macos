@@ -208,6 +208,18 @@ final class AppState: NSObject {
         isRestarting = false
     }
 
+    func insertFileReference(_ absolutePath: String) {
+        let base = workspacePath
+        let rel: String
+        if absolutePath.hasPrefix(base + "/") {
+            rel = String(absolutePath.dropFirst(base.count + 1))
+        } else {
+            rel = absolutePath
+        }
+        let ref = "@\(rel)"
+        draft = draft.isEmpty ? ref : draft + " " + ref
+    }
+
     func clearToolCalls() {
         toolCalls = []
         if let id = currentSessionId { toolCallCache[id] = [] }
